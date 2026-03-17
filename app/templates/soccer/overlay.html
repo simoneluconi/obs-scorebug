@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Soccer Overlay PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Teko:wght@500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; color: white; }
+        
+        /* MAIN WRAPPER FOR HUD AND PENALTIES */
+        .main-hud-wrapper {
+            position: absolute; top: 40px; left: 50px;
+            display: flex; flex-direction: column; align-items: stretch;
+        }
+
+        .hud-container {
+            display: flex; align-items: stretch;
+            background: linear-gradient(180deg, rgba(20,20,25,0.95) 0%, rgba(10,10,15,0.95) 100%);
+            border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative; z-index: 10;
+        }
+
+        .team-section { display: flex; align-items: center; position: relative; }
+        
+        .team-color-bg {
+            display: flex; align-items: center; justify-content: center;
+            min-width: 75px; padding: 0 15px; box-sizing: border-box; align-self: stretch; box-shadow: inset 0 0 15px rgba(0,0,0,0.3);
+        }
+        .team-section.home .team-color-bg { border-radius: 8px 0 0 8px; }
+        .team-section.away .team-color-bg { border-radius: 0 8px 8px 0; }
+        
+        .team-abbr { font-size: 28px; font-weight: 700; color: #fff; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); letter-spacing: 1px; }
+        .team-logo { width: 35px; height: 35px; object-fit: contain; margin: 0 15px; }
+
+        .score-box {
+            background: #000; font-family: 'Teko', sans-serif; font-size: 34px; font-weight: 600;
+            width: 60px; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;
+            padding-top: 4px; /* Visual alignment for Teko font */
+        }
+        .team-section.home .score-box { border-left: 1px solid #333; }
+        .team-section.away .score-box { border-right: 1px solid #333; }
+
+        .timer-section {
+            background: rgba(255,255,255,0.95); color: #000; padding: 5px 10px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;
+            width: 140px; box-sizing: border-box;
+        }
+        .timer { font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+        .period { font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+
+        .stoppage-badge {
+            position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(-10px);
+            background: #e11d48; color: white; padding: 2px 14px; border-radius: 0 0 6px 6px;
+            font-size: 16px; font-weight: bold; opacity: 0; transition: all 0.3s ease; z-index: -1;
+        }
+        .stoppage-badge.show { transform: translateX(-50%) translateY(0); opacity: 1; z-index: 5; }
+
+        /* PENALTY SHOOTOUT HUD */
+        .penalties-container {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15,15,20,0.9); padding: 6px 15px; border-radius: 0 0 8px 8px;
+            transform: translateY(-100%); opacity: 0; transition: all 0.4s ease;
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 1;
+            border: 1px solid rgba(255,255,255,0.1); border-top: none;
+        }
+        .penalties-container.show { transform: translateY(0); opacity: 1; }
+        
+        .penalty-dots { display: flex; gap: 4px; align-items: center; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #555; background: transparent; }
+        .dot.scored { border-color: #22c55e; background: #22c55e; box-shadow: 0 0 5px #22c55e; }
+        .dot.missed { border-color: #ef4444; background: #ef4444; }
+
+        .pen-text { font-family: 'Teko'; font-size: 18px; color: #aaa; letter-spacing: 1px; margin: 0 10px; }
+
+        /* EVENTS */
+        .event-popup {
+            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%) translateY(150px);
+            display: flex; opacity: 0; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden;
+        }
+        .event-popup.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .event-type-bar { background: #111; padding: 15px 25px; display: flex; align-items: center; gap: 15px; border-left: 8px solid; }
+        .event-icon { font-size: 30px; }
+        .event-title { font-family: 'Teko', sans-serif; font-size: 32px; line-height: 1; letter-spacing: 1px; margin-top: 8px; }
+        .event-details { background: linear-gradient(180deg, rgba(30,30,35,0.95) 0%, rgba(15,15,20,0.95) 100%); padding: 15px 30px; display: flex; flex-direction: column; justify-content: center; min-width: 350px; position: relative; }
+        .player-name { font-size: 28px; font-weight: bold; }
+        .sub-out { font-size: 18px; color: #ff4444; margin-top: 5px; }
+        .event-time { font-family: 'Teko'; font-size: 24px; color: #888; position: absolute; top: 12px; right: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="main-hud-wrapper">
+        <div class="hud-container">
+            <div class="team-section home">
+                <div class="team-color-bg" id="home-color"><span class="team-abbr" id="home-abbr">HOM</span></div>
+                <img class="team-logo" id="home-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
+                <div class="score-box" id="home-score">0</div>
+            </div>
+            
+            <div class="timer-section">
+                <div class="timer" id="match-timer">00:00</div>
+                <div class="period" id="match-period">1st HALF</div>
+                <div class="stoppage-badge" id="stoppage-badge">+0</div>
+            </div>
+
+            <div class="team-section away">
+                <div class="score-box" id="away-score">0</div>
+                <img class="team-logo" id="away-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
+                <div class="team-color-bg" id="away-color"><span class="team-abbr" id="away-abbr">AWY</span></div>
+            </div>
+        </div>
+
+        <div class="penalties-container" id="penalties-container">
+            <div class="penalty-dots" id="pen-dots-home"></div>
+            <div class="pen-text">PENALTIES</div>
+            <div class="penalty-dots" id="pen-dots-away"></div>
+        </div>
+    </div>
+
+    <div class="event-popup" id="event-popup">
+        <div class="event-type-bar" id="event-color-bar">
+            <span class="event-icon" id="event-icon">⚽</span>
+            <div class="event-title" id="event-title">GOAL</div>
+        </div>
+        <div class="event-details">
+            <div class="player-name" id="event-player-name">PLAYER</div>
+            <div class="sub-out" id="event-sub-out">▼ Sub out: None</div>
+            <div class="event-time" id="event-time-display">12:34</div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io("/soccer");
+        let state = {};
+        const placeholder_logo = "{{ url_for('static', filename='img/placeholder.svg') }}";
+
+        socket.on('clock_tick', (clockData) => {
+            if(!state.clock) state.clock = {};
+            state.clock.minutes = clockData.minutes;
+            state.clock.seconds = clockData.seconds;
+            updateTimerDOM();
+        });
+
+        socket.on('state_updated', (newData) => {
+            state = newData;
+            
+            document.getElementById('home-abbr').innerText = state.home_team.abbr;
+            document.getElementById('away-abbr').innerText = state.away_team.abbr;
+            document.getElementById('home-score').innerText = state.home_team.score;
+            document.getElementById('away-score').innerText = state.away_team.score;
+            document.getElementById('home-color').style.backgroundColor = state.home_team.color;
+            document.getElementById('away-color').style.backgroundColor = state.away_team.color;
+            document.getElementById('home-logo').src = state.home_team.logo || placeholder_logo;
+            document.getElementById('away-logo').src = state.away_team.logo || placeholder_logo;
+
+            document.getElementById('match-period').innerText = state.clock.period;
+            const badge = document.getElementById('stoppage-badge');
+            badge.innerText = '+' + state.clock.stoppage_time;
+            if(state.clock.show_stoppage && state.clock.stoppage_time > 0) badge.classList.add('show');
+            else badge.classList.remove('show');
+
+            updateTimerDOM();
+
+            // Penalties management
+            const penContainer = document.getElementById('penalties-container');
+            if(state.penalties.active) {
+                penContainer.classList.add('show');
+                renderPenaltyDots('home', state.penalties.home);
+                renderPenaltyDots('away', state.penalties.away);
+            } else {
+                penContainer.classList.remove('show');
+            }
+
+            const popup = document.getElementById('event-popup');
+            if(state.visibility.lower_third) {
+                renderEvent(state.current_event);
+                popup.classList.add('show');
+            } else {
+                popup.classList.remove('show');
+            }
+        });
+
+        function renderPenaltyDots(team, results) {
+            let html = '';
+            // Always show at least 5 dots
+            let maxDots = Math.max(5, results.length);
+            for(let i=0; i<maxDots; i++) {
+                if(i < results.length) {
+                    html += results[i] ? '<div class="dot scored"></div>' : '<div class="dot missed"></div>';
+                } else {
+                    html += '<div class="dot"></div>'; // Empty dot
+                }
+            }
+            document.getElementById(`pen-dots-${team}`).innerHTML = html;
+        }
+
+        function updateTimerDOM() {
+            if(!state.clock) return;
+            const m = String(state.clock.minutes).padStart(2, '0');
+            const s = String(state.clock.seconds).padStart(2, '0');
+            document.getElementById('match-timer').innerText = `${m}:${s}`;
+        }
+
+        function renderEvent(e) {
+            const isHome = e.team === 'home';
+            document.getElementById('event-color-bar').style.borderColor = isHome ? state.home_team.color : state.away_team.color;
+            
+            let icon = ''; let title = '';
+            const subOut = document.getElementById('event-sub-out');
+            subOut.style.display = 'none';
+
+            switch(e.type) {
+                case 'goal': icon = '⚽'; title = 'GOAL'; break;
+                case 'yellow_card': icon = '🟨'; title = 'YELLOW CARD'; break;
+                case 'red_card': icon = '🟥'; title = 'RED CARD'; break;
+                case 'sub': 
+                    icon = '🔄'; title = 'SUBSTITUTION'; 
+                    subOut.style.display = 'block';
+                    subOut.innerText = `▼ Out: ${e.player_2.replace(/^\d+\.\s*/, '')}`; 
+                    break;
+            }
+
+            document.getElementById('event-icon').innerText = icon;
+            document.getElementById('event-title').innerText = title;
+            document.getElementById('event-player-name').innerText = (e.type === 'sub' ? '▲ ' : '') + e.player_1;
+            document.getElementById('event-time-display').innerText = e.time;
+        }
+    </script>
+</body>
+</html>

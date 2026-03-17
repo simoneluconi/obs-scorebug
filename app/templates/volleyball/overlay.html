@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Volleyball Overlay PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Teko:wght@500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; color: white; }
+        
+        .main-hud-wrapper {
+            position: absolute; top: 40px; left: 50px;
+            display: flex; flex-direction: column; align-items: flex-start;
+            transition: opacity 0.3s;
+        }
+        .main-hud-wrapper.hidden { opacity: 0; }
+
+        /* HEADER (INFO & TIMER) */
+        .hud-header {
+            background: rgba(10,10,15,0.9); padding: 4px 15px; border-radius: 6px 6px 0 0;
+            display: flex; gap: 20px; font-size: 14px; font-weight: bold; letter-spacing: 1px;
+            color: #ccc; border: 1px solid rgba(255,255,255,0.1); border-bottom: none;
+        }
+        .timer { color: #fff; font-variant-numeric: tabular-nums; }
+
+        /* MAIN SCOREBOARD */
+        .scoreboard {
+            display: flex; align-items: stretch;
+            background: linear-gradient(180deg, rgba(20,20,25,0.95) 0%, rgba(10,10,15,0.95) 100%);
+            border-radius: 0 8px 8px 8px; box-shadow: 0 15px 30px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1); overflow: hidden;
+        }
+
+        .team-section { display: flex; align-items: center; position: relative; padding-right: 15px; }
+        .team-section.away { padding-right: 0; padding-left: 15px; flex-direction: row-reverse; }
+        
+        .team-color-bar { width: 8px; align-self: stretch; }
+        .team-logo { width: 45px; height: 35px; object-fit: contain; margin: 0 15px; }
+        
+        .team-abbr { font-size: 32px; font-weight: 700; width: 70px; text-shadow: 1px 1px 4px rgba(0,0,0,0.8); letter-spacing: 1px; }
+
+        /* SERVE INDICATOR */
+        .serve-indicator {
+            position: absolute; bottom: 0; left: 15px; right: 15px; height: 3px;
+            background: #eab308; opacity: 0; transition: opacity 0.3s;
+            box-shadow: 0 0 8px #eab308;
+        }
+        .team-section.serving .serve-indicator { opacity: 1; }
+
+        /* SETS WON (DOTS/SQUARES) */
+        .sets-won-container { display: flex; gap: 4px; margin: 0 15px; }
+        .set-dot { width: 14px; height: 14px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .set-dot.won { background: #fff; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
+
+        /* SCORE AND CENTRAL SET */
+        .score-box {
+            background: #000; font-family: 'Teko', sans-serif; font-size: 45px; font-weight: 600;
+            width: 60px; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums;
+        }
+        .team-section.home .score-box { border-left: 1px solid #333; }
+        .team-section.away .score-box { border-right: 1px solid #333; }
+
+        .set-info-box {
+            background: rgba(255,255,255,0.9); color: #000; padding: 0 15px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 16px; letter-spacing: 1px; min-width: 60px;
+        }
+
+        /* BOTTOM SETS HISTORY */
+        .previous-sets-wrapper {
+            display: flex; gap: 10px; margin-top: 5px; padding-left: 5px;
+        }
+        .prev-set-box {
+            background: rgba(10,10,15,0.9); border: 1px solid rgba(255,255,255,0.1);
+            padding: 2px 8px; border-radius: 4px; font-family: 'Teko', sans-serif; font-size: 20px;
+            color: #aaa; display: flex; gap: 5px;
+        }
+        .prev-set-box .winner { color: #fff; font-weight: bold; }
+
+        /* TIMEOUT & POINT BANNER (Absolute) */
+        .alert-banner {
+            position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+            padding: 4px 20px; border-radius: 4px; font-weight: bold; font-size: 16px; letter-spacing: 2px;
+            opacity: 0; transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: -1;
+        }
+        .alert-banner.show { opacity: 1; transform: translateX(-50%) translateY(40px); z-index: 20; }
+        .alert-timeout { background: #eab308; color: #000; }
+        .alert-point { background: #ef4444; color: #fff; animation: pulse 1s infinite alternate; }
+
+        @keyframes pulse { from { box-shadow: 0 0 5px #ef4444; } to { box-shadow: 0 0 20px #ef4444; } }
+
+    </style>
+</head>
+<body>
+
+    <div class="main-hud-wrapper" id="main-hud">
+        
+        <div class="alert-banner alert-timeout" id="timeout-banner">TIMEOUT</div>
+        <div class="alert-banner alert-point" id="point-banner">MATCH POINT</div>
+
+        <div class="hud-header">
+            <span id="match-period">FINAL</span>
+            <span class="timer" id="match-timer">00:00:00</span>
+        </div>
+
+        <div class="scoreboard">
+            <div class="team-section home" id="home-section">
+                <div class="team-color-bar" id="home-color"></div>
+                <img class="team-logo" id="home-logo" src="">
+                <div class="team-abbr" id="home-abbr">HOM</div>
+                
+                <div class="sets-won-container" id="home-sets-dots">
+                    <div class="set-dot"></div><div class="set-dot"></div><div class="set-dot"></div>
+                </div>
+                
+                <div class="score-box" id="home-score">0</div>
+                <div class="serve-indicator"></div>
+            </div>
+
+            <div class="set-info-box">
+                SET<br><span style="font-size: 24px; line-height: 0.8;" id="current-set">1</span>
+            </div>
+
+            <div class="team-section away" id="away-section">
+                <div class="team-color-bar" id="away-color"></div>
+                <img class="team-logo" id="away-logo" src="">
+                <div class="team-abbr" id="away-abbr">AWY</div>
+                
+                <div class="sets-won-container" id="away-sets-dots">
+                    <div class="set-dot"></div><div class="set-dot"></div><div class="set-dot"></div>
+                </div>
+                
+                <div class="score-box" id="away-score">0</div>
+                <div class="serve-indicator"></div>
+            </div>
+        </div>
+
+        <div class="previous-sets-wrapper" id="previous-sets"></div>
+    </div>
+
+    <script>
+        const socket = io("/volleyball");
+        let state = {};
+        const placeholder_logo = "{{ url_for('static', filename='img/placeholder.svg') }}";
+
+        socket.on('clock_tick', (clockData) => {
+            if(!state.clock) state.clock = {};
+            state.clock.hours = clockData.hours;
+            state.clock.minutes = clockData.minutes;
+            state.clock.seconds = clockData.seconds;
+            updateTimerDOM();
+        });
+
+        socket.on('state_updated', (newData) => {
+            state = newData;
+            
+            // HUD Visibility
+            const hud = document.getElementById('main-hud');
+            if(state.is_visible) hud.classList.remove('hidden'); else hud.classList.add('hidden');
+
+            document.getElementById('home-abbr').innerText = state.home_team.abbr;
+            document.getElementById('away-abbr').innerText = state.away_team.abbr;
+            document.getElementById('home-score').innerText = state.home_team.score;
+            document.getElementById('away-score').innerText = state.away_team.score;
+            document.getElementById('current-set').innerText = state.current_set_number;
+            
+            document.getElementById('home-color').style.backgroundColor = state.home_team.color;
+            document.getElementById('away-color').style.backgroundColor = state.away_team.color;
+            document.getElementById('home-logo').src = state.home_team.logo || placeholder_logo;
+            document.getElementById('away-logo').src = state.away_team.logo || placeholder_logo;
+
+            // Serving team
+            document.getElementById('home-section').classList.toggle('serving', state.serving_team_index === 0);
+            document.getElementById('away-section').classList.toggle('serving', state.serving_team_index === 1);
+
+            // Sets won (dots)
+            renderSetDots('home', state.home_team.sets_won);
+            renderSetDots('away', state.away_team.sets_won);
+
+            // Sets history
+            renderPreviousSets(state.previous_sets);
+
+            document.getElementById('match-period').innerText = state.clock.period;
+            updateTimerDOM();
+
+            // Timeout and Match Point
+            const timeoutBanner = document.getElementById('timeout-banner');
+            if(state.timeout_visible) timeoutBanner.classList.add('show'); else timeoutBanner.classList.remove('show');
+
+            const pointBanner = document.getElementById('point-banner');
+            pointBanner.classList.remove('show');
+            if(state.home_match_point || state.away_match_point) {
+                pointBanner.innerText = 'MATCH POINT'; pointBanner.classList.add('show');
+            } else if (state.home_set_point || state.away_set_point) {
+                pointBanner.innerText = 'SET POINT'; pointBanner.classList.add('show');
+            }
+        });
+
+        function renderSetDots(team, won) {
+            let html = '';
+            for(let i=0; i<3; i++) html += `<div class="set-dot ${i < won ? 'won' : ''}"></div>`;
+            document.getElementById(`${team}-sets-dots`).innerHTML = html;
+        }
+
+        function renderPreviousSets(sets) {
+            let html = '';
+            sets.forEach((s, idx) => {
+                const hClass = s.home > s.away ? 'winner' : '';
+                const aClass = s.away > s.home ? 'winner' : '';
+                html += `<div class="prev-set-box">S${idx+1}: <span class="${hClass}">${s.home}</span>-<span class="${aClass}">${s.away}</span></div>`;
+            });
+            document.getElementById('previous-sets').innerHTML = html;
+        }
+
+        function updateTimerDOM() {
+            if(!state.clock) return;
+            const h = String(state.clock.hours).padStart(2, '0');
+            const m = String(state.clock.minutes).padStart(2, '0');
+            const s = String(state.clock.seconds).padStart(2, '0');
+            document.getElementById('match-timer').innerText = `${h}:${m}:${s}`;
+        }
+    </script>
+</body>
+</html>

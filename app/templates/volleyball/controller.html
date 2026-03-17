@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Volleyball Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style> 
+        body { background-color: #111827; color: #f3f4f6; } 
+        .info-modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .info-modal-content {
+            background-color: #1f2937;
+            margin: 15% auto;
+            padding: 2rem;
+            border: 1px solid #374151;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 12px;
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .info-button {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="p-6">
+
+    <div id="infoModal" class="info-modal">
+        <div class="info-modal-content">
+            <span class="close-button" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
+            <h2 class="text-2xl font-bold mb-4 text-blue-300">OBS Browser Source URLs</h2>
+            <p class="text-gray-400 mb-6">Copy and paste these addresses as "Browser Source" in OBS.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Main Scoreboard</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/overlay">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Player Profile Lower Third</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/player_overlay">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Match Stats Graphic</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/stats_overlay">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Top-Right "REPLAY" Bug</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/replay_overlay">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="absolute top-4 right-4">
+        <button onclick="document.getElementById('infoModal').style.display='block'" class="info-button bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-colors">
+            <span class="material-icons">info</span>
+        </button>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">Volleyball Control Panel</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-yellow-400">Match Time</h2>
+            <div class="text-5xl font-mono text-center mb-4" id="clock-display">00:00:00</div>
+            
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="clockAction('start')" class="bg-green-600 p-2 rounded font-bold hover:bg-green-500">PLAY</button>
+                <button onclick="clockAction('stop')" class="bg-red-600 p-2 rounded font-bold hover:bg-red-500">PAUSE</button>
+                <button onclick="clockAction('reset')" class="bg-gray-600 p-2 rounded font-bold col-span-2 hover:bg-gray-500">RESET TIMER</button>
+            </div>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="sync-hour" class="w-1/3 bg-gray-700 p-2 rounded" placeholder="H">
+                <input type="number" id="sync-min" class="w-1/3 bg-gray-700 p-2 rounded" placeholder="M">
+                <input type="number" id="sync-sec" class="w-1/3 bg-gray-700 p-2 rounded" placeholder="S">
+                <button onclick="syncClock()" class="bg-blue-600 p-2 rounded hover:bg-blue-500">Sync</button>
+            </div>
+            <input type="text" id="period-select" onkeyup="updatePeriod()" class="w-full bg-gray-700 p-2 rounded mt-2" placeholder="Tournament Stage (e.g. FINAL)">
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg col-span-2">
+            <h2 class="text-xl font-bold mb-4 text-white">Quick Actions & Graphics</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="toggleVisibility('is_visible')" class="bg-blue-600 px-4 py-4 rounded font-bold text-lg">Toggle Main Scoreboard</button>
+                <button onclick="toggleVisibility('timeout_visible')" class="bg-yellow-600 px-4 py-4 rounded font-bold text-lg">Toggle TIMEOUT</button>
+                <button onclick="toggleVisibility('stats_overlay_visible')" class="bg-purple-600 px-4 py-4 rounded font-bold text-lg">Toggle Stats/Summary</button>
+                <button onclick="toggleVisibility('replay_visible')" class="bg-pink-600 px-4 py-4 rounded font-bold text-lg">Toggle REPLAY bug</button>
+            </div>
+            <div class="mt-4 p-4 bg-gray-900 rounded border border-gray-700 text-center">
+                <span class="text-gray-400 block mb-2">Current Set: <span id="current_set" class="text-white font-bold text-xl">1</span></span>
+                <button onclick="socket.emit('next_set')" class="bg-green-600 px-6 py-2 rounded font-bold">Start Next Set</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6 grid grid-cols-2 gap-8">
+        <div class="border-r border-gray-700 pr-4">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-2xl font-bold text-blue-400">Home Team</h2>
+                <label class="flex items-center gap-2 cursor-pointer bg-gray-900 p-2 rounded">
+                    <input type="radio" name="server_toggle" onchange="setServer(0)" id="serve_home" class="w-5 h-5">
+                    <span class="font-bold text-yellow-400">SERVING</span>
+                </label>
+            </div>
+            
+            <input type="text" id="home_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbr. (e.g. ITA)">
+            <input type="text" id="home_name" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Full Name">
+            <div class="flex gap-2 mb-4">
+                <input type="color" id="home_color" class="h-10 w-16 rounded" value="#3b82f6">
+                <input type="text" id="home_logo" class="flex-1 bg-gray-700 p-2 rounded" placeholder="Flag/Logo URL">
+                <button onclick="updateTeamInfo('home')" class="bg-blue-600 px-4 rounded hover:bg-blue-500">Save</button>
+            </div>
+            
+            <div class="flex justify-between items-center mb-4">
+                <div class="bg-gray-900 p-4 rounded text-center w-1/3">
+                    <span class="block text-sm text-gray-400">SETS WON</span>
+                    <input type="number" id="home_sets" class="w-full text-center bg-transparent text-3xl font-bold" value="0" onchange="updateScore('home')">
+                </div>
+                <div class="flex items-center justify-center gap-4">
+                    <button onclick="updatePoints('home', -1)" class="bg-gray-600 p-4 rounded text-xl">-</button>
+                    <span id="home_score" class="text-7xl font-bold text-center w-24">0</span>
+                    <button onclick="updatePoints('home', 1)" class="bg-blue-600 p-4 rounded text-xl">+</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="pl-2">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-2xl font-bold text-red-400">Away Team</h2>
+                <label class="flex items-center gap-2 cursor-pointer bg-gray-900 p-2 rounded">
+                    <input type="radio" name="server_toggle" onchange="setServer(1)" id="serve_away" class="w-5 h-5">
+                    <span class="font-bold text-yellow-400">SERVING</span>
+                </label>
+            </div>
+            
+            <input type="text" id="away_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbr. (e.g. BRA)">
+            <input type="text" id="away_name" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Full Name">
+            <div class="flex gap-2 mb-4">
+                <input type="color" id="away_color" class="h-10 w-16 rounded" value="#ef4444">
+                <input type="text" id="away_logo" class="flex-1 bg-gray-700 p-2 rounded" placeholder="Flag/Logo URL">
+                <button onclick="updateTeamInfo('away')" class="bg-red-600 px-4 rounded hover:bg-red-500">Save</button>
+            </div>
+            
+            <div class="flex justify-between items-center mb-4 flex-row-reverse">
+                <div class="bg-gray-900 p-4 rounded text-center w-1/3">
+                    <span class="block text-sm text-gray-400">SETS WON</span>
+                    <input type="number" id="away_sets" class="w-full text-center bg-transparent text-3xl font-bold" value="0" onchange="updateScore('away')">
+                </div>
+                <div class="flex items-center justify-center gap-4">
+                    <button onclick="updatePoints('away', -1)" class="bg-gray-600 p-4 rounded text-xl">-</button>
+                    <span id="away_score" class="text-7xl font-bold text-center w-24">0</span>
+                    <button onclick="updatePoints('away', 1)" class="bg-red-600 p-4 rounded text-xl">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold text-blue-400 mb-4">Home Roster</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="h_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
+                <input type="text" id="h_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
+                <input type="text" id="h_p_role" placeholder="Role" class="w-24 bg-gray-700 p-2 rounded">
+                <button onclick="addPlayer('home')" class="bg-blue-600 px-4 py-2 rounded font-bold">Add</button>
+            </div>
+            <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold text-red-400 mb-4">Away Roster</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="a_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
+                <input type="text" id="a_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
+                <input type="text" id="a_p_role" placeholder="Role" class="w-24 bg-gray-700 p-2 rounded">
+                <button onclick="addPlayer('away')" class="bg-red-600 px-4 py-2 rounded font-bold">Add</button>
+            </div>
+            <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+        </div>
+        
+        <div class="col-span-1 lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg border border-purple-500">
+            <h2 class="text-xl font-bold text-purple-400 mb-4">Show Player Profile (Lower Third)</h2>
+            <div class="flex gap-4">
+                <select id="select-player-team" onchange="updatePlayerDropdown()" class="bg-gray-700 p-2 rounded w-1/4">
+                    <option value="home">Home</option><option value="away">Away</option>
+                </select>
+                <select id="select-player-name" class="bg-gray-700 p-2 rounded flex-1"><option>Select Player...</option></select>
+                <button onclick="showPlayer()" class="bg-purple-600 px-6 rounded font-bold">SHOW</button>
+                <button onclick="hidePlayer()" class="bg-gray-600 px-6 rounded font-bold">HIDE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io("/volleyball");
+        let localState = { clock: { hours: 0, minutes: 0, seconds: 0 } };
+        
+        socket.on('clock_tick', (clockData) => {
+            if(!localState.clock) localState.clock = {};
+            localState.clock.hours = clockData.hours;
+            localState.clock.minutes = clockData.minutes;
+            localState.clock.seconds = clockData.seconds;
+            updateClockDisplay();
+        });
+
+        socket.on('state_updated', (state) => {
+            const isFirstLoad = !localState.home_team;
+            localState = state;
+            
+            document.getElementById('home_score').innerText = state.home_team.score;
+            document.getElementById('away_score').innerText = state.away_team.score;
+            document.getElementById('home_sets').value = state.home_team.sets_won;
+            document.getElementById('away_sets').value = state.away_team.sets_won;
+            document.getElementById('current_set').innerText = state.current_set_number;
+            
+            document.getElementById('serve_home').checked = state.serving_team_index === 0;
+            document.getElementById('serve_away').checked = state.serving_team_index === 1;
+
+            updateClockDisplay();
+
+            if(localState.home_team) { 
+                renderPlayerList('home'); 
+                renderPlayerList('away'); 
+            }
+            
+            if (isFirstLoad && localState.home_team) {
+                document.getElementById('home_abbr').value = state.home_team.abbr;
+                document.getElementById('home_name').value = state.home_team.name;
+                document.getElementById('home_logo').value = state.home_team.logo;
+                document.getElementById('away_abbr').value = state.away_team.abbr;
+                document.getElementById('away_name').value = state.away_team.name;
+                document.getElementById('away_logo').value = state.away_team.logo;
+                document.getElementById('period-select').value = state.clock.period;
+                updatePlayerDropdown();
+            }
+        });
+
+        function updateClockDisplay() {
+            if(!localState.clock) return;
+            const h = String(localState.clock.hours).padStart(2, '0');
+            const m = String(localState.clock.minutes).padStart(2, '0');
+            const s = String(localState.clock.seconds).padStart(2, '0');
+            document.getElementById('clock-display').innerText = `${h}:${m}:${s}`;
+        }
+
+        function emitUpdate(payload) {
+            if(!payload.clock) payload.clock = {};
+            payload.clock.hours = localState.clock.hours;
+            payload.clock.minutes = localState.clock.minutes;
+            payload.clock.seconds = localState.clock.seconds;
+            socket.emit('update_state', payload);
+        }
+
+        function clockAction(action) { socket.emit('clock_action', { action: action }); }
+        function syncClock() {
+            const h = parseInt(document.getElementById('sync-hour').value) || 0;
+            const m = parseInt(document.getElementById('sync-min').value) || 0;
+            const s = parseInt(document.getElementById('sync-sec').value) || 0;
+            socket.emit('clock_action', {action: 'sync', hours: h, minutes: m, seconds: s});
+        }
+        function updatePeriod() { emitUpdate({'clock': {period: document.getElementById('period-select').value}}); }
+
+        function toggleVisibility(prop) {
+            let payload = {}; payload[prop] = !localState[prop];
+            emitUpdate(payload);
+        }
+
+        function setServer(index) { emitUpdate({ serving_team_index: index }); }
+
+        function updateTeamInfo(team) {
+            let payload = {};
+            payload[`${team}_team`] = {
+                abbr: document.getElementById(`${team}_abbr`).value,
+                name: document.getElementById(`${team}_name`).value,
+                color: document.getElementById(`${team}_color`).value,
+                logo: document.getElementById(`${team}_logo`).value || ''
+            };
+            emitUpdate(payload);
+        }
+
+        function updatePoints(team, amount) {
+            let newScore = Math.max(0, localState[`${team}_team`].score + amount);
+            let payload = {}; payload[`${team}_team`] = {score: newScore};
+            emitUpdate(payload);
+        }
+
+        function updateScore(team) {
+            let payload = {}; payload[`${team}_team`] = {sets_won: parseInt(document.getElementById(`${team}_sets`).value) || 0};
+            emitUpdate(payload);
+        }
+
+        function addPlayer(team) {
+            const prefix = team === 'home' ? 'h' : 'a';
+            const num = document.getElementById(`${prefix}_p_num`).value;
+            const name = document.getElementById(`${prefix}_p_name`).value;
+            const role = document.getElementById(`${prefix}_p_role`).value;
+            if(!num || !name) return;
+            
+            let players = localState[`${team}_team`].players;
+            players.push({ number: num, name: name.toUpperCase(), role: role });
+            players.sort((a,b) => parseInt(a.number) - parseInt(b.number));
+            
+            let payload = {}; payload[`${team}_team`] = { players: players };
+            emitUpdate(payload);
+            
+            document.getElementById(`${prefix}_p_num`).value = '';
+            document.getElementById(`${prefix}_p_name`).value = '';
+            updatePlayerDropdown();
+        }
+
+        function removePlayer(team, index) {
+            let players = localState[`${team}_team`].players;
+            players.splice(index, 1);
+            let payload = {}; payload[`${team}_team`] = { players: players };
+            emitUpdate(payload);
+            updatePlayerDropdown();
+        }
+
+        function renderPlayerList(team) {
+            const list = document.getElementById(`${team}-player-list`);
+            list.innerHTML = '';
+            localState[`${team}_team`].players.forEach((p, idx) => {
+                list.innerHTML += `<li class="flex justify-between p-1 border-b border-gray-700">
+                    <span><b>${p.number}</b> ${p.name} (${p.role})</span>
+                    <button onclick="removePlayer('${team}', ${idx})" class="text-red-500 hover:text-red-300">X</button>
+                </li>`;
+            });
+        }
+
+        function updatePlayerDropdown() {
+            if(!localState.home_team) return;
+            const team = document.getElementById('select-player-team').value;
+            const players = localState[`${team}_team`].players;
+            
+            let html = '<option value="">Select Player...</option>';
+            players.forEach((p, idx) => { html += `<option value="${idx}">${p.number}. ${p.name}</option>`; });
+            document.getElementById('select-player-name').innerHTML = html;
+        }
+
+        function showPlayer() {
+            const team = document.getElementById('select-player-team').value;
+            const idx = document.getElementById('select-player-name').value;
+            if(idx === '') return;
+            const player = localState[`${team}_team`].players[idx];
+            
+            emitUpdate({
+                current_player: { ...player, team_color: localState[`${team}_team`].color, team_logo: localState[`${team}_team`].logo },
+                player_overlay_visible: true
+            });
+        }
+
+        function hidePlayer() { emitUpdate({ player_overlay_visible: false }); }
+    </script>
+</body>
+</html>
