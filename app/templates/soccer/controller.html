@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Soccer Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style> 
+        body { background-color: #111827; color: #f3f4f6; } 
+        .info-modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .info-modal-content {
+            background-color: #1f2937;
+            margin: 15% auto;
+            padding: 2rem;
+            border: 1px solid #374151;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 12px;
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .info-button {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="p-6">
+
+    <div id="infoModal" class="info-modal">
+        <div class="info-modal-content">
+            <span class="close-button" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
+            <h2 class="text-2xl font-bold mb-4 text-blue-300">OBS Browser Source URLs</h2>
+            <p class="text-gray-400 mb-6">Copy and paste these addresses as "Browser Source" in OBS.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Main Scoreboard</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/soccer/overlay">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Match Stats Graphic</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/soccer/stats">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Lineup Graphic</label>
+                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/soccer/lineup">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="absolute top-4 right-4">
+        <button onclick="document.getElementById('infoModal').style.display='block'" class="info-button bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-colors">
+            <span class="material-icons">info</span>
+        </button>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">Soccer Control Panel</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-yellow-400">Timer</h2>
+            <div class="text-5xl font-mono text-center mb-4" id="clock-display">00:00</div>
+            
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="clockAction('start')" class="bg-green-600 p-2 rounded font-bold hover:bg-green-500">START</button>
+                <button onclick="clockAction('stop')" class="bg-red-600 p-2 rounded font-bold hover:bg-red-500">STOP</button>
+                <button onclick="clockAction('reset')" class="bg-gray-600 p-2 rounded font-bold col-span-2 hover:bg-gray-500">RESET</button>
+            </div>
+            
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="sync-min" class="w-1/2 bg-gray-700 p-2 rounded" placeholder="Min">
+                <input type="number" id="sync-sec" class="w-1/2 bg-gray-700 p-2 rounded" placeholder="Sec">
+                <button onclick="syncClock()" class="bg-blue-600 p-2 rounded hover:bg-blue-500">Sync</button>
+            </div>
+
+            <div class="mb-2">
+                <label class="block text-sm mb-1">Stoppage Time (+ Mins)</label>
+                <div class="flex gap-2">
+                    <input type="number" id="stoppage" class="w-full bg-gray-700 p-2 rounded" value="0">
+                    <button onclick="updateStoppage(true)" class="bg-yellow-600 p-2 rounded px-4 hover:bg-yellow-500">Show</button>
+                    <button onclick="updateStoppage(false)" class="bg-gray-600 p-2 rounded px-4 hover:bg-gray-500">Hide</button>
+                </div>
+            </div>
+            
+            <select id="period-select" onchange="updatePeriod()" class="w-full bg-gray-700 p-2 rounded mt-2">
+                <option value="1st HALF">1st HALF</option>
+                <option value="HALF TIME">HALF TIME</option>
+                <option value="2nd HALF">2nd HALF</option>
+                <option value="FULL TIME">FULL TIME</option>
+            </select>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg col-span-2 grid grid-cols-2 gap-6">
+            <div>
+                <h2 class="text-xl font-bold mb-2 text-blue-400">Home Team</h2>
+                <input type="text" id="home_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbreviation (e.g. HOM)">
+                <input type="color" id="home_color" class="w-full h-10 rounded mb-2" value="#1d4ed8">
+                <input type="text" id="home_logo" class="w-full bg-gray-700 p-2 rounded mb-4" placeholder="Logo URL">
+                <button onclick="updateTeamInfo('home')" class="w-full bg-blue-600 p-2 rounded mb-4 hover:bg-blue-500">Save Home Info</button>
+                
+                <div class="flex items-center justify-center gap-4 mb-4">
+                    <button onclick="updateScore('home', -1)" class="bg-gray-600 p-4 rounded text-xl hover:bg-gray-500">-</button>
+                    <span id="home_score" class="text-5xl font-bold">0</span>
+                    <button onclick="updateScore('home', 1)" class="bg-blue-600 p-4 rounded text-xl hover:bg-blue-500">+</button>
+                </div>
+            </div>
+            
+            <div>
+                <h2 class="text-xl font-bold mb-2 text-red-400">Away Team</h2>
+                <input type="text" id="away_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbreviation (e.g. GUE)">
+                <input type="color" id="away_color" class="w-full h-10 rounded mb-2" value="#b91c1c">
+                <input type="text" id="away_logo" class="w-full bg-gray-700 p-2 rounded mb-4" placeholder="Logo URL">
+                <button onclick="updateTeamInfo('away')" class="w-full bg-red-600 p-2 rounded mb-4 hover:bg-red-500">Save Away Info</button>
+                
+                <div class="flex items-center justify-center gap-4 mb-4">
+                    <button onclick="updateScore('away', -1)" class="bg-gray-600 p-4 rounded text-xl hover:bg-gray-500">-</button>
+                    <span id="away_score" class="text-5xl font-bold">0</span>
+                    <button onclick="updateScore('away', 1)" class="bg-red-600 p-4 rounded text-xl hover:bg-red-500">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6 border border-pink-500">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-pink-400">Penalty Shootout</h2>
+            <button onclick="togglePenalties()" id="btn-penalties" class="bg-gray-600 px-4 py-2 rounded font-bold">Show Penalties HUD</button>
+        </div>
+        <div class="grid grid-cols-2 gap-6">
+            <div class="bg-gray-700 p-4 rounded text-center">
+                <h3 class="font-bold text-blue-300 mb-2">Home Penalties</h3>
+                <button onclick="addPenalty('home', true)" class="bg-green-600 px-3 py-1 rounded">⚽ Scored</button>
+                <button onclick="addPenalty('home', false)" class="bg-red-600 px-3 py-1 rounded">❌ Missed</button>
+                <button onclick="removePenalty('home')" class="bg-gray-500 px-3 py-1 rounded ml-2">Undo</button>
+            </div>
+            <div class="bg-gray-700 p-4 rounded text-center">
+                <h3 class="font-bold text-red-300 mb-2">Away Penalties</h3>
+                <button onclick="addPenalty('away', true)" class="bg-green-600 px-3 py-1 rounded">⚽ Scored</button>
+                <button onclick="addPenalty('away', false)" class="bg-red-600 px-3 py-1 rounded">❌ Missed</button>
+                <button onclick="removePenalty('away')" class="bg-gray-500 px-3 py-1 rounded ml-2">Undo</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
+        <h2 class="text-xl font-bold text-white mb-4">Stats & Overlay Management</h2>
+        <div class="flex gap-4 mb-4">
+            <button onclick="updateStats()" class="bg-green-600 px-4 py-2 rounded font-bold">Save Stats</button>
+            <button onclick="toggleVisibility('stats')" class="bg-purple-600 px-4 py-2 rounded font-bold">Toggle Stats</button>
+            <button onclick="toggleVisibility('lineup')" class="bg-yellow-600 px-4 py-2 rounded font-bold text-black">Toggle Lineup</button>
+        </div>
+        <div class="flex gap-4">
+            <select id="lineup_team" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
+                <option value="home">Home Team</option>
+                <option value="away">Away Team</option>
+            </select>
+            <select id="lineup_type" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
+                <option value="titolare">Show Starters</option>
+                <option value="panchina">Show Substitutes</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold text-blue-400 mb-4">Home Roster</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="h_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
+                <input type="text" id="h_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
+                <select id="h_p_role" class="bg-gray-700 p-2 rounded w-20">
+                    <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
+                </select>
+                <select id="h_p_status" class="bg-gray-700 p-2 rounded">
+                    <option value="titolare">Starter</option>
+                    <option value="panchina">Substitute</option>
+                </select>
+                <button onclick="addPlayer('home')" class="bg-blue-600 px-3 py-2 rounded font-bold hover:bg-blue-500">Add</button>
+            </div>
+            <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold text-red-400 mb-4">Away Roster</h2>
+            <div class="flex gap-2 mb-4">
+                <input type="number" id="a_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
+                <input type="text" id="a_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
+                <select id="a_p_role" class="bg-gray-700 p-2 rounded w-20">
+                    <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
+                </select>
+                <select id="a_p_status" class="bg-gray-700 p-2 rounded">
+                    <option value="titolare">Starter</option>
+                    <option value="panchina">Substitute</option>
+                </select>
+                <button onclick="addPlayer('away')" class="bg-red-600 px-3 py-2 rounded font-bold hover:bg-red-500">Add</button>
+            </div>
+            <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-bold mb-4 text-purple-400">Events Control</h2>
+        <div class="grid grid-cols-4 gap-4">
+            <select id="event-team" onchange="updateEventDropdowns()" class="bg-gray-700 p-2 rounded">
+                <option value="home">Home</option>
+                <option value="away">Away</option>
+            </select>
+            <select id="event-type" class="bg-gray-700 p-2 rounded">
+                <option value="goal">⚽ GOAL</option>
+                <option value="yellow_card">🟨 Yellow Card</option>
+                <option value="red_card">🟥 Red Card</option>
+                <option value="sub">🔄 Substitution</option>
+            </select>
+            <select id="event-player1" class="bg-gray-700 p-2 rounded"><option>Player (In/Scorer)...</option></select>
+            <select id="event-player2" class="bg-gray-700 p-2 rounded"><option>Player (Out)...</option></select>
+        </div>
+        <div class="flex gap-4 mt-4">
+            <button onclick="sendEvent()" class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded font-bold">Show Event</button>
+            <button onclick="hideEvent()" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded font-bold">Hide Event</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io("/soccer");
+        let localState = { clock: { minutes: 0, seconds: 0 }, penalties: { active: false } };
+
+        socket.on('clock_tick', (clockData) => {
+            if(!localState.clock) localState.clock = {};
+            localState.clock.minutes = clockData.minutes;
+            localState.clock.seconds = clockData.seconds;
+            updateClockDisplay();
+        });
+
+        socket.on('state_updated', (state) => {
+            const isFirstLoad = !localState.home_team;
+            localState = state;
+            
+            document.getElementById('home_score').innerText = state.home_team.score;
+            document.getElementById('away_score').innerText = state.away_team.score;
+            
+            updateClockDisplay();
+
+            if(localState.home_team) { 
+                renderPlayerList('home'); renderPlayerList('away'); 
+                
+                const btnPen = document.getElementById('btn-penalties');
+                if(state.penalties.active) {
+                    btnPen.classList.replace('bg-gray-600', 'bg-pink-600');
+                    btnPen.innerText = 'Hide Penalties HUD';
+                } else {
+                    btnPen.classList.replace('bg-pink-600', 'bg-gray-600');
+                    btnPen.innerText = 'Show Penalties HUD';
+                }
+            }
+            
+            if (isFirstLoad && localState.home_team) {
+                updateEventDropdowns();
+                document.getElementById('home_abbr').value = state.home_team.abbr;
+                document.getElementById('home_logo').value = state.home_team.logo;
+                document.getElementById('away_abbr').value = state.away_team.abbr;
+                document.getElementById('away_logo').value = state.away_team.logo;
+            }
+        });
+
+        function updateClockDisplay() {
+            if(!localState.clock) return;
+            const m = String(localState.clock.minutes).padStart(2, '0');
+            const s = String(localState.clock.seconds).padStart(2, '0');
+            document.getElementById('clock-display').innerText = `${m}:${s}`;
+        }
+
+        function emitUpdate(payload) {
+            if(!payload.clock) payload.clock = {};
+            payload.clock.minutes = localState.clock.minutes;
+            payload.clock.seconds = localState.clock.seconds;
+            socket.emit('update_state', payload);
+        }
+
+        function clockAction(action) { socket.emit('clock_action', { action: action }); }
+        function syncClock() {
+            const m = parseInt(document.getElementById('sync-min').value) || 0;
+            const s = parseInt(document.getElementById('sync-sec').value) || 0;
+            socket.emit('clock_action', {action: 'sync', minutes: m, seconds: s});
+        }
+        function updateStoppage(show) {
+            let val = document.getElementById('stoppage').value;
+            emitUpdate({'clock': {stoppage_time: val, show_stoppage: show}});
+        }
+        function updatePeriod() { emitUpdate({'clock': {period: document.getElementById('period-select').value}}); }
+
+        function updateTeamInfo(team) {
+            let payload = {};
+            payload[`${team}_team`] = {
+                abbr: document.getElementById(`${team}_abbr`).value,
+                color: document.getElementById(`${team}_color`).value,
+                logo: document.getElementById(`${team}_logo`).value || ''
+            };
+            emitUpdate(payload);
+        }
+        function updateScore(team, amount) {
+            let newScore = Math.max(0, localState[`${team}_team`].score + amount);
+            let payload = {}; payload[`${team}_team`] = {score: newScore};
+            emitUpdate(payload);
+        }
+
+        function togglePenalties() {
+            emitUpdate({ penalties: { ...localState.penalties, active: !localState.penalties.active }});
+        }
+        function addPenalty(team, isGoal) {
+            let p = localState.penalties; p[team].push(isGoal); emitUpdate({ penalties: p });
+        }
+        function removePenalty(team) {
+            let p = localState.penalties; if(p[team].length > 0) p[team].pop(); emitUpdate({ penalties: p });
+        }
+
+        function addPlayer(team) {
+            const prefix = team === 'home' ? 'h' : 'a';
+            const num = document.getElementById(`${prefix}_p_num`).value;
+            const name = document.getElementById(`${prefix}_p_name`).value;
+            const role = document.getElementById(`${prefix}_p_role`).value;
+            const status = document.getElementById(`${prefix}_p_status`).value;
+            if(!num || !name) return;
+            
+            let players = localState[`${team}_team`].players;
+            players.push({ number: num, name: name.toUpperCase(), role: role, status: status });
+            players.sort((a,b) => parseInt(a.number) - parseInt(b.number));
+            
+            let payload = {}; payload[`${team}_team`] = { players: players };
+            emitUpdate(payload);
+            
+            document.getElementById(`${prefix}_p_num`).value = '';
+            document.getElementById(`${prefix}_p_name`).value = '';
+            updateEventDropdowns();
+        }
+
+        function removePlayer(team, index) {
+            let players = localState[`${team}_team`].players;
+            players.splice(index, 1);
+            let payload = {}; payload[`${team}_team`] = { players: players };
+            emitUpdate(payload);
+            updateEventDropdowns();
+        }
+
+        function renderPlayerList(team) {
+            const list = document.getElementById(`${team}-player-list`);
+            list.innerHTML = '';
+            localState[`${team}_team`].players.forEach((p, idx) => {
+                const badgeClass = p.status === 'titolare' ? 'bg-green-600' : 'bg-yellow-600';
+                const badgeText = p.status === 'titolare' ? 'Starter' : 'Sub';
+                list.innerHTML += `<li class="flex justify-between items-center p-1 border-b border-gray-700">
+                    <span><span class="${badgeClass} text-xs px-1 rounded mr-2">${badgeText}</span><b>${p.number}</b> ${p.name} <span class="text-gray-400 text-xs ml-1">(${p.role})</span></span>
+                    <button onclick="removePlayer('${team}', ${idx})" class="text-red-500 hover:text-red-300">X</button>
+                </li>`;
+            });
+        }
+
+        function updateEventDropdowns() {
+            if(!localState.home_team) return;
+            const team = document.getElementById('event-team').value;
+            const players = localState[`${team}_team`].players;
+            
+            let html = '<option value="">Select Player...</option>';
+            players.forEach(p => { html += `<option value="${p.number}. ${p.name}">${p.number}. ${p.name}</option>`; });
+            
+            document.getElementById('event-player1').innerHTML = html;
+            document.getElementById('event-player2').innerHTML = html;
+        }
+
+        function sendEvent() {
+            socket.emit('trigger_event', {
+                type: document.getElementById('event-type').value,
+                team: document.getElementById('event-team').value,
+                player_1: document.getElementById('event-player1').value,
+                player_2: document.getElementById('event-player2').value,
+                time: document.getElementById('clock-display').innerText
+            });
+        }
+        function hideEvent() { socket.emit('hide_event'); }
+
+        function toggleVisibility(overlay) {
+            let current = localState.visibility[overlay];
+            let payload = { visibility: {} };
+            payload.visibility[overlay] = !current;
+            emitUpdate(payload);
+        }
+
+        function changeLineupSettings() {
+            emitUpdate({ 
+                current_lineup_team: document.getElementById('lineup_team').value,
+                current_lineup_type: document.getElementById('lineup_type').value 
+            });
+        }
+    </script>
+</body>
+</html>

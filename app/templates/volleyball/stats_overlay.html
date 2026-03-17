@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volleyball Stats Overlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Teko:wght@500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { 
+            margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; 
+            color: white; display: flex; justify-content: center; align-items: center; 
+            height: 100vh; background: transparent;
+        }
+        
+        /* Main animated container */
+        .stats-box {
+            background: linear-gradient(180deg, rgba(20,20,25,0.98) 0%, rgba(10,10,15,0.98) 100%);
+            width: 1000px; border-radius: 12px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.9); overflow: hidden;
+            transform: translateY(150%); opacity: 0; transition: all 0.7s cubic-bezier(0.2, 1, 0.2, 1);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .stats-box.show { transform: translateY(0); opacity: 1; }
+        
+        /* HEADER: TEAMS AND SETS WON */
+        .stats-header { 
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 30px;
+            background: rgba(0,0,0,0.6); padding: 25px 40px; border-bottom: 2px solid rgba(255,255,255,0.05);
+        }
+
+        .team-block { display: flex; align-items: center; gap: 20px; }
+        .team-block.home { justify-content: flex-end; }
+        .team-block.away { justify-content: flex-start; }
+        
+        .team-logo { width: 60px; height: 60px; object-fit: contain; }
+        .team-name { font-size: 34px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+        
+        .sets-won { 
+            font-family: 'Teko', sans-serif; 
+            font-size: 55px; 
+            line-height: 0.8; 
+            background: #000; 
+            padding: 14px 20px 8px 20px; 
+            border-radius: 8px; 
+            border: 1px solid rgba(255,255,255,0.2);
+            text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }
+
+        .match-title { text-align: center; color: #888; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; font-weight: bold; }
+
+        /* BODY: SETS SCOREBOARD AND ROSTER */
+        .stats-body { padding: 30px 40px 40px 40px; }
+        
+        /* SETS SCORES */
+        .sets-history { 
+            display: flex; justify-content: center; gap: 15px; margin-bottom: 30px;
+            padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .set-box { 
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); 
+            padding: 10px 20px; border-radius: 8px; text-align: center; min-width: 80px;
+        }
+        .set-box.current { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); }
+        
+        .set-label { color: #888; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; margin-bottom: 5px; }
+        .set-box.current .set-label { color: #eab308; } /* Yellow for current set */
+        
+        .set-score { font-family: 'Teko', sans-serif; font-size: 38px; font-weight: 600; line-height: 1; display: flex; justify-content: center; gap: 10px; }
+        
+        /* ROSTERS */
+        .rosters-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        
+        .roster-col { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.02); }
+        .roster-header { text-align: center; font-weight: bold; color: #aaa; font-size: 18px; letter-spacing: 3px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; }
+        
+        .player-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .player-item:last-child { border-bottom: none; }
+        
+        .player-num { font-family: 'Teko', sans-serif; font-size: 28px; width: 45px; text-align: center; line-height: 1; }
+        .player-name { flex: 1; font-size: 20px; font-weight: bold; margin-left: 10px; text-transform: uppercase; }
+        .player-role { font-size: 16px; color: #888; font-weight: normal; }
+    </style>
+</head>
+<body>
+
+    <div class="stats-box" id="stats-box">
+        <div class="stats-header">
+            <div class="team-block home">
+                <div class="team-name" id="h-name">HOME</div>
+                <img class="team-logo" id="h-logo" src="">
+                <div class="sets-won" id="h-sets">0</div>
+            </div>
+            
+            <div class="match-title">MATCH SUMMARY</div>
+            
+            <div class="team-block away">
+                <div class="sets-won" id="a-sets">0</div>
+                <img class="team-logo" id="a-logo" src="">
+                <div class="team-name" id="a-name">AWAY</div>
+            </div>
+        </div>
+
+        <div class="stats-body">
+            
+            <div class="sets-history" id="sets-history-container">
+                </div>
+
+            <div class="rosters-container">
+                <div class="roster-col">
+                    <div class="roster-header">HOME TEAM ROSTER</div>
+                    <div id="home-roster-list"></div>
+                </div>
+                <div class="roster-col">
+                    <div class="roster-header">AWAY TEAM ROSTER</div>
+                    <div id="away-roster-list"></div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        const socket = io("/volleyball");
+        
+        socket.on('state_updated', (state) => {
+            const box = document.getElementById('stats-box');
+            
+            if (state.stats_overlay_visible) {
+                
+                document.getElementById('h-name').innerText = state.home_team.name || state.home_team.abbr;
+                document.getElementById('a-name').innerText = state.away_team.name || state.away_team.abbr;
+                document.getElementById('h-logo').src = state.home_team.logo;
+                document.getElementById('a-logo').src = state.away_team.logo;
+                document.getElementById('h-sets').innerText = state.home_team.sets_won;
+                document.getElementById('a-sets').innerText = state.away_team.sets_won;
+
+                document.getElementById('h-name').style.color = state.home_team.color;
+                document.getElementById('a-name').style.color = state.away_team.color;
+
+                let setsHtml = '';
+                
+                if (state.previous_sets && state.previous_sets.length > 0) {
+                    state.previous_sets.forEach((s, idx) => {
+                        const hColor = s.home > s.away ? '#fff' : '#666';
+                        const aColor = s.away > s.home ? '#fff' : '#666';
+                        setsHtml += `
+                            <div class="set-box">
+                                <div class="set-label">SET ${idx + 1}</div>
+                                <div class="set-score">
+                                    <span style="color: ${hColor};">${s.home}</span> <span style="color:#444">-</span> <span style="color: ${aColor};">${s.away}</span>
+                                </div>
+                            </div>`;
+                    });
+                }
+                
+                if (!state.set_over) {
+                    setsHtml += `
+                        <div class="set-box current">
+                            <div class="set-label">SET ${state.current_set_number}</div>
+                            <div class="set-score">
+                                <span>${state.home_team.score}</span> <span style="color:#444">-</span> <span>${state.away_team.score}</span>
+                            </div>
+                        </div>`;
+                }
+                document.getElementById('sets-history-container').innerHTML = setsHtml;
+
+                const buildRoster = (players, color) => {
+                    let html = '';
+                    if (players && players.length > 0) {
+                        players.forEach(p => {
+                            html += `
+                                <div class="player-item">
+                                    <div class="player-num" style="color: ${color}">${p.number}</div>
+                                    <div class="player-name">${p.name}</div>
+                                    <div class="player-role">${p.role || ''}</div>
+                                </div>`;
+                        });
+                    } else {
+                        html = '<div style="text-align:center; color:#666; padding: 20px;">No players entered</div>';
+                    }
+                    return html;
+                };
+
+                document.getElementById('home-roster-list').innerHTML = buildRoster(state.home_team.players, state.home_team.color);
+                document.getElementById('away-roster-list').innerHTML = buildRoster(state.away_team.players, state.away_team.color);
+
+                box.classList.add('show');
+            } else {
+                box.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>

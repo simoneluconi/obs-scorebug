@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Soccer Stats</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Teko:wght@500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { 
+            margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; 
+            color: white; display: flex; justify-content: center; align-items: flex-end; 
+            height: 100vh; padding-bottom: 80px; 
+        }
+        
+        .stats-box {
+            background: linear-gradient(180deg, rgba(25,25,30,0.98) 0%, rgba(10,10,12,0.98) 100%);
+            width: 850px; border-radius: 12px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.9); overflow: hidden;
+            transform: translateY(150%); transition: transform 0.6s cubic-bezier(0.2, 1, 0.2, 1);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .stats-box.show { transform: translateY(0); }
+        
+        .stats-header { 
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 30px;
+            background: #0a0a0c; padding: 25px 40px; border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .team-block { display: flex; align-items: center; gap: 15px; }
+        .team-block.home { justify-content: flex-end; }
+        .team-block.away { justify-content: flex-start; }
+        
+        .team-logo { width: 50px; height: 50px; object-fit: contain; }
+        .team-abbr { font-family: 'Teko', sans-serif; font-size: 55px; line-height: 1; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        
+        .match-title { text-align: center; color: #888; font-size: 16px; text-transform: uppercase; letter-spacing: 4px; font-weight: bold; }
+        .stats-body { padding: 20px 0 40px 0; }
+        
+        .stat-row { 
+            display: grid; grid-template-columns: 100px 1fr 100px; align-items: center; 
+            padding: 15px 50px; transition: background 0.3s;
+        }
+        .stat-row:hover { background: rgba(255,255,255,0.02); }
+        
+        .stat-val { font-family: 'Teko', sans-serif; font-size: 42px; text-align: center; font-weight: 600; }
+        .stat-label { text-align: center; font-size: 18px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
+        
+        .bar-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; padding: 0 20px; box-sizing: border-box;}
+        .bar-container { 
+            display: flex; width: 100%; height: 10px; background: #222; 
+            border-radius: 10px; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .bar-home, .bar-away { height: 100%; transition: width 0.8s cubic-bezier(0.2, 1, 0.2, 1); }
+    </style>
+</head>
+<body>
+    <div class="stats-box" id="stats-box">
+        <div class="stats-header">
+            <div class="team-block home">
+                <div class="team-abbr" id="h-abbr">HOM</div>
+                <img class="team-logo" id="h-logo" src="">
+            </div>
+            <div class="match-title">MATCH STATS</div>
+            <div class="team-block away">
+                <img class="team-logo" id="a-logo" src="">
+                <div class="team-abbr" id="a-abbr">AWY</div>
+            </div>
+        </div>
+
+        <div class="stats-body">
+            <div class="stat-row">
+                <div class="stat-val" id="h-poss">50%</div>
+                <div class="stat-label">
+                    <div>BALL POSSESSION</div>
+                    <div class="bar-wrapper mt-2">
+                        <div class="bar-container">
+                            <div class="bar-home" id="bar-home"></div>
+                            <div class="bar-away" id="bar-away"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-val" id="a-poss">50%</div>
+            </div>
+
+            <div class="stat-row" style="margin-top: 20px;">
+                <div class="stat-val" id="h-shots">0</div>
+                <div class="stat-label">TOTAL SHOTS</div>
+                <div class="stat-val" id="a-shots">0</div>
+            </div>
+            
+            <div class="stat-row">
+                <div class="stat-val" id="h-fouls">0</div>
+                <div class="stat-label">FOULS</div>
+                <div class="stat-val" id="a-fouls">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io("/soccer");
+        socket.on('state_updated', (state) => {
+            const box = document.getElementById('stats-box');
+            if (state.visibility.stats) {
+                document.getElementById('h-abbr').innerText = state.home_team.abbr;
+                document.getElementById('a-abbr').innerText = state.away_team.abbr;
+                document.getElementById('h-abbr').style.color = state.home_team.color;
+                document.getElementById('a-abbr').style.color = state.away_team.color;
+                
+                document.getElementById('h-logo').src = state.home_team.logo;
+                document.getElementById('a-logo').src = state.away_team.logo;
+
+                let hp = state.home_team.stats.possession;
+                let ap = state.away_team.stats.possession;
+                document.getElementById('h-poss').innerText = hp + '%';
+                document.getElementById('a-poss').innerText = ap + '%';
+                
+                const barHome = document.getElementById('bar-home');
+                const barAway = document.getElementById('bar-away');
+                barHome.style.width = hp + '%';
+                barHome.style.background = state.home_team.color;
+                barHome.style.boxShadow = `0 0 10px ${state.home_team.color}`;
+                
+                barAway.style.width = ap + '%';
+                barAway.style.background = state.away_team.color;
+                barAway.style.boxShadow = `0 0 10px ${state.away_team.color}`;
+
+                document.getElementById('h-shots').innerText = state.home_team.stats.shots;
+                document.getElementById('a-shots').innerText = state.away_team.stats.shots;
+                document.getElementById('h-fouls').innerText = state.home_team.stats.fouls;
+                document.getElementById('a-fouls').innerText = state.away_team.stats.fouls;
+
+                box.classList.add('show');
+            } else {
+                box.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>

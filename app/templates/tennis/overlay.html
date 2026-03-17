@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tennis Overlay PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Teko:wght@500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; color: white; }
+        
+        /* TENNIS HUD - HORIZONTAL AND STACKED */
+        .tennis-hud {
+            position: absolute; bottom: 80px; left: 80px;
+            display: flex; flex-direction: column;
+            background: linear-gradient(180deg, rgba(20,20,25,0.95) 0%, rgba(10,10,15,0.95) 100%);
+            border-radius: 8px; box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden; min-width: 500px;
+        }
+
+        .hud-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #111; padding: 6px 20px;
+            border-bottom: 2px solid rgba(255,255,255,0.05);
+        }
+        .match-period { font-size: 14px; font-weight: 700; color: #aaa; letter-spacing: 2px; text-transform: uppercase;}
+        .timer { font-size: 16px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+        /* PLAYER ROWS */
+        .player-row {
+            display: flex; align-items: stretch; border-bottom: 1px solid rgba(255,255,255,0.05);
+            height: 55px;
+        }
+        .player-row:last-child { border-bottom: none; }
+
+        .color-bar { width: 8px; }
+        
+        .player-info {
+            display: flex; align-items: center; flex-grow: 1; padding: 0 15px;
+        }
+        .flag { width: 30px; height: 20px; object-fit: cover; border-radius: 2px; margin-right: 15px; border: 1px solid #333;}
+        .name { font-size: 26px; font-weight: 700; letter-spacing: 1px; flex-grow: 1; text-transform: uppercase;}
+
+        .serve-indicator {
+            width: 30px; display: flex; align-items: center; justify-content: center;
+            font-size: 16px; opacity: 0; transition: opacity 0.3s;
+        }
+        .serve-indicator.active { opacity: 1; }
+        .serve-dot { width: 10px; height: 10px; background: #eab308; border-radius: 50%; box-shadow: 0 0 8px #eab308;}
+
+        /* SCORE COLUMNS */
+        .score-col {
+            display: flex; align-items: center; justify-content: center;
+            width: 45px; font-family: 'Teko', sans-serif; font-size: 32px; font-weight: 600;
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+        .score-col.sets { background: rgba(0,0,0,0.4); color: #ccc;}
+        .score-col.games { background: rgba(0,0,0,0.8); color: #fff;}
+        .score-col.points { background: #fff; color: #000; font-size: 36px; width: 60px;}
+
+        /* TIE-BREAK TRACKER */
+        .penalties-container {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15,15,20,0.9); padding: 8px 15px; border-radius: 8px; margin-top: 10px;
+            transform: translateX(-150%); opacity: 0; transition: all 0.4s ease;
+        }
+        .penalties-container.show { transform: translateX(0); opacity: 1; }
+        
+        .penalty-dots { display: flex; gap: 4px; align-items: center; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #555; background: transparent; }
+        .dot.scored { border-color: #22c55e; background: #22c55e; box-shadow: 0 0 5px #22c55e; }
+        .dot.missed { border-color: #ef4444; background: #ef4444; }
+        .pen-text { font-family: 'Teko'; font-size: 18px; color: #aaa; letter-spacing: 1px; margin: 0 10px; }
+
+        /* POPUP EVENTS */
+        .event-popup {
+            position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(150px);
+            display: flex; opacity: 0; transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8); border-radius: 8px; overflow: hidden;
+        }
+        .event-popup.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .event-type-bar { background: #111; padding: 15px 25px; display: flex; align-items: center; justify-content: center; min-width: 150px; border-left: 8px solid; }
+        .event-title { font-family: 'Teko', sans-serif; font-size: 38px; line-height: 1; letter-spacing: 2px; margin-top: 5px;}
+        .event-details { background: linear-gradient(180deg, rgba(30,30,35,0.95) 0%, rgba(15,15,20,0.95) 100%); padding: 15px 30px; display: flex; align-items: center; min-width: 250px; }
+        .player-name { font-size: 30px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="tennis-hud">
+        <div class="hud-header">
+            <span class="match-period" id="match-period">FINAL</span>
+            <span class="timer" id="match-timer">00:00:00</span>
+        </div>
+        
+        <div class="player-row home">
+            <div class="color-bar" id="home-color" style="background: #1d4ed8;"></div>
+            <div class="player-info">
+                <img class="flag" id="home-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
+                <div class="name" id="home-abbr">P1</div>
+            </div>
+            <div class="serve-indicator" id="home-serve"><div class="serve-dot"></div></div>
+            <div class="score-col sets" id="home-sets">0</div>
+            <div class="score-col games" id="home-games">0</div>
+            <div class="score-col points" id="home-score">0</div>
+        </div>
+
+        <div class="player-row away">
+            <div class="color-bar" id="away-color" style="background: #b91c1c;"></div>
+            <div class="player-info">
+                <img class="flag" id="away-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
+                <div class="name" id="away-abbr">P2</div>
+            </div>
+            <div class="serve-indicator" id="away-serve"><div class="serve-dot"></div></div>
+            <div class="score-col sets" id="away-sets">0</div>
+            <div class="score-col games" id="away-games">0</div>
+            <div class="score-col points" id="away-score">0</div>
+        </div>
+    </div>
+
+    <div class="penalties-container" id="penalties-container" style="position: absolute; bottom: 20px; left: 80px; width: 470px;">
+        <div class="penalty-dots" id="pen-dots-home"></div>
+        <div class="pen-text">TIE-BREAK</div>
+        <div class="penalty-dots" id="pen-dots-away"></div>
+    </div>
+
+    <div class="event-popup" id="event-popup">
+        <div class="event-type-bar" id="event-color-bar">
+            <div class="event-title" id="event-title">ACE</div>
+        </div>
+        <div class="event-details" id="event-details-box">
+            <div class="player-name" id="event-player-name">PLAYER</div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io("/tennis");
+        let state = {};
+        const placeholder_logo = "{{ url_for('static', filename='img/placeholder.svg') }}";
+
+        socket.on('clock_tick', (clockData) => {
+            if(!state.clock) state.clock = {};
+            state.clock.hours = clockData.hours;
+            state.clock.minutes = clockData.minutes;
+            state.clock.seconds = clockData.seconds;
+            updateTimerDOM();
+        });
+
+        socket.on('state_updated', (newData) => {
+            state = newData;
+            
+            document.getElementById('home-abbr').innerText = state.home_team.abbr;
+            document.getElementById('away-abbr').innerText = state.away_team.abbr;
+            
+            document.getElementById('home-sets').innerText = state.home_team.sets;
+            document.getElementById('home-games').innerText = state.home_team.games;
+            document.getElementById('home-score').innerText = state.home_team.score;
+            document.getElementById('away-sets').innerText = state.away_team.sets;
+            document.getElementById('away-games').innerText = state.away_team.games;
+            document.getElementById('away-score').innerText = state.away_team.score;
+
+            document.getElementById('home-serve').className = 'serve-indicator ' + (state.home_team.serving ? 'active' : '');
+            document.getElementById('away-serve').className = 'serve-indicator ' + (state.away_team.serving ? 'active' : '');
+
+            document.getElementById('home-color').style.background = state.home_team.color;
+            document.getElementById('away-color').style.background = state.away_team.color;
+            document.getElementById('home-logo').src = state.home_team.logo || placeholder_logo;
+            document.getElementById('away-logo').src = state.away_team.logo || placeholder_logo;
+
+            document.getElementById('match-period').innerText = state.clock.period;
+            updateTimerDOM();
+
+            const penContainer = document.getElementById('penalties-container');
+            if(state.penalties.active) {
+                penContainer.classList.add('show');
+                renderPenaltyDots('home', state.penalties.home);
+                renderPenaltyDots('away', state.penalties.away);
+            } else {
+                penContainer.classList.remove('show');
+            }
+
+            const popup = document.getElementById('event-popup');
+            if(state.visibility.lower_third) {
+                renderEvent(state.current_event);
+                popup.classList.add('show');
+            } else {
+                popup.classList.remove('show');
+            }
+        });
+
+        function renderPenaltyDots(team, results) {
+            let html = '';
+            let maxDots = Math.max(7, results.length); // In a 7-point tie-break
+            for(let i=0; i<maxDots; i++) {
+                if(i < results.length) {
+                    html += results[i] ? '<div class="dot scored"></div>' : '<div class="dot missed"></div>';
+                } else {
+                    html += '<div class="dot"></div>';
+                }
+            }
+            document.getElementById(`pen-dots-${team}`).innerHTML = html;
+        }
+
+        function updateTimerDOM() {
+            if(!state.clock) return;
+            const h = String(state.clock.hours).padStart(2, '0');
+            const m = String(state.clock.minutes).padStart(2, '0');
+            const s = String(state.clock.seconds).padStart(2, '0');
+            document.getElementById('match-timer').innerText = `${h}:${m}:${s}`;
+        }
+
+        function renderEvent(e) {
+            const isHome = e.team === 'home';
+            document.getElementById('event-color-bar').style.borderColor = isHome ? state.home_team.color : state.away_team.color;
+            
+            let title = '';
+            switch(e.type) {
+                case 'ace': title = 'ACE'; break;
+                case 'winner': title = 'WINNER'; break;
+                case 'double_fault': title = 'DOUBLE FAULT'; break;
+                case 'break_point': title = 'BREAK POINT'; break;
+                case 'set_point': title = 'SET POINT'; break;
+                case 'match_point': title = 'MATCH POINT'; break;
+                case 'var': title = 'HAWK-EYE'; document.getElementById('event-color-bar').style.borderColor = '#eab308'; break;
+            }
+
+            document.getElementById('event-title').innerText = title;
+            const nameBox = document.getElementById('event-player-name');
+            if (e.player_1) {
+                nameBox.innerText = e.player_1;
+                document.getElementById('event-details-box').style.display = 'flex';
+            } else {
+                document.getElementById('event-details-box').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
