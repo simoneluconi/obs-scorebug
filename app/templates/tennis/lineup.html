@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profiles / Teams</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Teko:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; color: white; }
+        .lineup-container {
+            position: absolute; left: 50px; top: 150px; width: 450px;
+            background: rgba(15, 15, 20, 0.95); border-left: 8px solid #1d4ed8;
+            border-radius: 0 10px 10px 0; box-shadow: 10px 10px 30px rgba(0,0,0,0.6);
+            transform: translateX(-150%); transition: transform 0.6s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+        .lineup-container.show { transform: translateX(0); }
+        
+        .header { background: #111; padding: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .team-name { font-family: 'Teko', sans-serif; font-size: 40px; line-height: 1; letter-spacing: 2px; }
+        .title { color: #aaa; font-size: 14px; text-transform: uppercase; letter-spacing: 3px; }
+        
+        .players-list { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .player-row { display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .p-number { width: 40px; font-family: 'Teko'; font-size: 28px; color: #fff; text-align: center; }
+        .p-name { font-size: 20px; margin-left: 15px; font-weight: bold; }
+        .p-role { margin-left: auto; font-size: 14px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="lineup-container" id="lineup-box">
+        <div class="header">
+            <div>
+                <div class="title" id="lineup-title">PROFILE / ROSTER</div>
+                <div class="team-name" id="team-name">TEAM</div>
+            </div>
+        </div>
+        <div class="players-list" id="players-list"></div>
+    </div>
+
+    <script>
+        const socket = io("/tennis");
+        socket.on('state_updated', (state) => {
+            const box = document.getElementById('lineup-box');
+            if (state.visibility.lineup) {
+                const teamKey = state.current_lineup_team; 
+                const lineupType = state.current_lineup_type; 
+                const team = state[`${teamKey}_team`];
+                
+                document.getElementById('team-name').innerText = team.name || team.abbr;
+                document.getElementById('lineup-title').innerText = lineupType === 'starter' ? 'ON COURT' : 'BENCH / STAFF';
+                box.style.borderLeftColor = team.color;
+
+                const list = document.getElementById('players-list');
+                list.innerHTML = '';
+                
+                const filteredPlayers = team.players.filter(p => p.status === lineupType);
+                
+                filteredPlayers.forEach(p => {
+                    list.innerHTML += `
+                        <div class="player-row">
+                            <div class="p-number" style="color: ${team.color}">${p.number}</div>
+                            <div class="p-name">${p.name}</div>
+                            <div class="p-role">${p.role || ''}</div>
+                        </div>`;
+                });
+                box.classList.add('show');
+            } else {
+                box.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Volleyball Replay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; display: flex; justify-content: flex-end; padding: 40px; }
+        
+        .replay-bug {
+            background: #ef4444; color: white; display: flex; align-items: center; gap: 10px;
+            padding: 8px 25px; border-radius: 4px; font-size: 24px; font-weight: bold; letter-spacing: 2px;
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+            transform: translateX(150%); opacity: 0; transition: all 0.4s ease-out;
+        }
+        .replay-bug.show { transform: translateX(0); opacity: 1; }
+        .r-icon { animation: blink 1s infinite alternate; }
+
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.2; } }
+    </style>
+</head>
+<body>
+
+    <div class="replay-bug" id="replay-bug">
+        <span class="r-icon">▶</span> REPLAY
+    </div>
+
+    <script>
+        const socket = io("/volleyball");
+        socket.on('state_updated', (state) => {
+            const bug = document.getElementById('replay-bug');
+            if (state.replay_visible) bug.classList.add('show');
+            else bug.classList.remove('show');
+        });
+    </script>
+</body>
+</html>
