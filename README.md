@@ -40,6 +40,17 @@ The system is split into two parts:
 - Automatically update in real-time ⚡
 - Zero interaction needed once configured
 
+💡 **Tip (Scaling overlays in OBS)**  
+If you need to **scale the overlay up or down**, you can use the CSS zoom property in the **Custom CSS settings** of the OBS Browser Source:
+
+```css
+body {
+	background-color: rgba(0, 0, 0, 0);
+	margin: 0px auto;
+	overflow: hidden;
+	zoom: 2; /* 🔍 Change this value (es. 1.5, 2, 0.8) */
+}
+```
 ---
 
 ### 🎛️ Control Panel (remote control)
