@@ -9,16 +9,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Teko:wght@500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
     <style>
+        :root {
+            /* METODO CONSIGLIATO PER INGRANDIRE: Cambia questo valore. 
+               Es: 1.5 per il 150%, 2 per il 200%. 
+               Se usi questo, non ti serve iniettare 'zoom: 2' su OBS */
+            --overlay-scale: 1;
+        }
+
         body { 
-            margin: 0; overflow: hidden; font-family: 'Roboto Condensed', sans-serif; 
-            color: white; display: flex; justify-content: center; align-items: center; 
-            height: 100vh; background: transparent;
+            margin: 0; padding: 0; overflow: hidden; 
+            font-family: 'Roboto Condensed', sans-serif; 
+            color: white; background: transparent;
+            /* Rimosso flexbox e height:100vh perché in conflitto con la proprietà 'zoom' di OBS */
         }
         
+        /* Nuovo wrapper che mantiene l'overlay sempre perfettamente centrato a prescindere dallo zoom */
+        .center-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(var(--overlay-scale));
+            width: 1000px;
+        }
+
         /* Main animated container */
         .stats-box {
             background: linear-gradient(180deg, rgba(20,20,25,0.98) 0%, rgba(10,10,15,0.98) 100%);
-            width: 1000px; border-radius: 12px;
+            width: 100%; border-radius: 12px;
             box-shadow: 0 25px 60px rgba(0,0,0,0.9); overflow: hidden;
             transform: translateY(150%); opacity: 0; transition: all 0.7s cubic-bezier(0.2, 1, 0.2, 1);
             border: 1px solid rgba(255,255,255,0.1);
@@ -90,39 +107,42 @@
 </head>
 <body>
 
-    <div class="stats-box" id="stats-box">
-        <div class="stats-header">
-            <div class="team-block home">
-                <div class="team-name" id="h-name">HOME</div>
-                <img class="team-logo" id="h-logo" src="">
-                <div class="sets-won" id="h-sets">0</div>
+    <!-- Wrapper per gestire lo zoom in sicurezza -->
+    <div class="center-wrapper">
+        <div class="stats-box" id="stats-box">
+            <div class="stats-header">
+                <div class="team-block home">
+                    <div class="team-name" id="h-name">HOME</div>
+                    <img class="team-logo" id="h-logo" src="">
+                    <div class="sets-won" id="h-sets">0</div>
+                </div>
+                
+                <div class="match-title">MATCH SUMMARY</div>
+                
+                <div class="team-block away">
+                    <div class="sets-won" id="a-sets">0</div>
+                    <img class="team-logo" id="a-logo" src="">
+                    <div class="team-name" id="a-name">AWAY</div>
+                </div>
             </div>
-            
-            <div class="match-title">MATCH SUMMARY</div>
-            
-            <div class="team-block away">
-                <div class="sets-won" id="a-sets">0</div>
-                <img class="team-logo" id="a-logo" src="">
-                <div class="team-name" id="a-name">AWAY</div>
-            </div>
-        </div>
 
-        <div class="stats-body">
-            
-            <div class="sets-history" id="sets-history-container">
+            <div class="stats-body">
+                
+                <div class="sets-history" id="sets-history-container">
                 </div>
 
-            <div class="rosters-container">
-                <div class="roster-col">
-                    <div class="roster-header">HOME TEAM ROSTER</div>
-                    <div id="home-roster-list"></div>
+                <div class="rosters-container">
+                    <div class="roster-col">
+                        <div class="roster-header">HOME TEAM ROSTER</div>
+                        <div id="home-roster-list"></div>
+                    </div>
+                    <div class="roster-col">
+                        <div class="roster-header">AWAY TEAM ROSTER</div>
+                        <div id="away-roster-list"></div>
+                    </div>
                 </div>
-                <div class="roster-col">
-                    <div class="roster-header">AWAY TEAM ROSTER</div>
-                    <div id="away-roster-list"></div>
-                </div>
+                
             </div>
-            
         </div>
     </div>
 
