@@ -104,6 +104,14 @@ def handle_update_state(data):
     if game_state.get('set_over', False) and is_score_update:
         start_next_set()
 
+    if 'timeout_visible' in data:
+        if data['timeout_visible'] is True:
+            game_state['clock']['running'] = False
+        else:
+            game_state['clock']['running'] = True
+        # We emit clock update to clients to show state change
+        socketio.emit('clock_tick', game_state['clock'], namespace='/volleyball')
+
     for key, value in data.items():
         if isinstance(value, dict) and key in game_state:
             if key == 'home_team' or key == 'away_team':
