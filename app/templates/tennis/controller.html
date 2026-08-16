@@ -57,15 +57,15 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Main Scoreboard</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/tennis/overlay">
+                    <input type="text" readonly id="url-overlay" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">H2H Stats Graphic</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/tennis/stats">
+                    <input type="text" readonly id="url-stats" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Player Profile/Roster Graphic</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/tennis/lineup">
+                    <input type="text" readonly id="url-lineup" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
             </div>
         </div>
@@ -98,6 +98,11 @@
             </div>
 
             <input type="text" id="period-select" onkeyup="updatePeriod()" class="w-full bg-gray-700 p-2 rounded mt-2" placeholder="Tournament Info (e.g. FINAL - SINGLES)">
+
+            <select id="match-format-select" onchange="updateMatchFormat()" class="w-full bg-gray-700 p-2 rounded mt-2">
+                <option value="BO3">Best of 3 Sets</option>
+                <option value="BO5">Best of 5 Sets</option>
+            </select>
         </div>
 
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg col-span-2 grid grid-cols-2 gap-6">
@@ -212,6 +217,50 @@
         </div>
     </div>
 
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
+        <h2 class="text-xl font-bold text-white mb-4">Player Profile / Roster</h2>
+        <div class="flex gap-4 mb-4">
+            <select id="lineup_team" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
+                <option value="home">Player 1</option>
+                <option value="away">Player 2</option>
+            </select>
+            <select id="lineup_type" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
+                <option value="starter">Show On Court</option>
+                <option value="bench">Show Bench / Staff</option>
+            </select>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+                <h3 class="font-bold text-blue-300 mb-2">Player 1 Roster</h3>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="h_p_num" placeholder="Rank/No." class="w-20 bg-gray-700 p-2 rounded">
+                    <input type="text" id="h_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
+                    <input type="text" id="h_p_role" placeholder="Country/Role" class="w-28 bg-gray-700 p-2 rounded">
+                    <select id="h_p_status" class="bg-gray-700 p-2 rounded">
+                        <option value="starter">On Court</option>
+                        <option value="bench">Bench</option>
+                    </select>
+                    <button onclick="addPlayer('home')" class="bg-blue-600 px-3 py-2 rounded font-bold hover:bg-blue-500">Add</button>
+                </div>
+                <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[80px]"></ul>
+            </div>
+            <div>
+                <h3 class="font-bold text-red-300 mb-2">Player 2 Roster</h3>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="a_p_num" placeholder="Rank/No." class="w-20 bg-gray-700 p-2 rounded">
+                    <input type="text" id="a_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
+                    <input type="text" id="a_p_role" placeholder="Country/Role" class="w-28 bg-gray-700 p-2 rounded">
+                    <select id="a_p_status" class="bg-gray-700 p-2 rounded">
+                        <option value="starter">On Court</option>
+                        <option value="bench">Bench</option>
+                    </select>
+                    <button onclick="addPlayer('away')" class="bg-red-600 px-3 py-2 rounded font-bold hover:bg-red-500">Add</button>
+                </div>
+                <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[80px]"></ul>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-pink-500 mb-6">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold text-pink-400">Tie-Break / Mini-Break Tracker</h2>
@@ -234,6 +283,10 @@
     <script>
         const socket = io("/tennis");
         let localState = { clock: { hours: 0, minutes: 0, seconds: 0 }, penalties: { active: false } };
+
+        document.getElementById('url-overlay').value = window.location.origin + '/tennis/overlay';
+        document.getElementById('url-stats').value = window.location.origin + '/tennis/stats';
+        document.getElementById('url-lineup').value = window.location.origin + '/tennis/lineup';
 
         socket.on('clock_tick', (clockData) => {
             if(!localState.clock) localState.clock = {};
@@ -259,7 +312,9 @@
             
             updateClockDisplay();
 
-            if(localState.home_team) { 
+            if(localState.home_team) {
+                renderPlayerList('home'); renderPlayerList('away');
+
                 const btnPen = document.getElementById('btn-penalties');
                 if(state.penalties.active) {
                     btnPen.classList.replace('bg-gray-600', 'bg-pink-600');
@@ -269,13 +324,16 @@
                     btnPen.innerText = 'Show Tracker';
                 }
             }
-            
+
             if (isFirstLoad && localState.home_team) {
                 document.getElementById('home_abbr').value = state.home_team.abbr;
                 document.getElementById('home_logo').value = state.home_team.logo;
                 document.getElementById('away_abbr').value = state.away_team.abbr;
                 document.getElementById('away_logo').value = state.away_team.logo;
                 document.getElementById('period-select').value = state.clock.period;
+                document.getElementById('match-format-select').value = state.match_format || 'BO3';
+                document.getElementById('lineup_team').value = state.current_lineup_team || 'home';
+                document.getElementById('lineup_type').value = state.current_lineup_type || 'starter';
             }
         });
 
@@ -303,6 +361,7 @@
             socket.emit('clock_action', {action: 'sync', hours: h, minutes: m, seconds: s});
         }
         function updatePeriod() { emitUpdate({'clock': {period: document.getElementById('period-select').value}}); }
+        function updateMatchFormat() { emitUpdate({ match_format: document.getElementById('match-format-select').value }); }
 
         function updateTeamInfo(team) {
             let payload = {};
@@ -359,18 +418,88 @@
 
         function updateStats() {
             emitUpdate({
-                home_team: { stats: { 
-                    aces: document.getElementById('h_aces').value, 
-                    winners: document.getElementById('h_win').value,
-                    unforced: document.getElementById('h_unf').value,
-                    double_faults: document.getElementById('h_df').value
+                home_team: { stats: {
+                    aces: parseInt(document.getElementById('h_aces').value) || 0,
+                    winners: parseInt(document.getElementById('h_win').value) || 0,
+                    unforced: parseInt(document.getElementById('h_unf').value) || 0,
+                    double_faults: parseInt(document.getElementById('h_df').value) || 0
                 }},
-                away_team: { stats: { 
-                    aces: document.getElementById('a_aces').value, 
-                    winners: document.getElementById('a_win').value,
-                    unforced: document.getElementById('a_unf').value,
-                    double_faults: document.getElementById('a_df').value
+                away_team: { stats: {
+                    aces: parseInt(document.getElementById('a_aces').value) || 0,
+                    winners: parseInt(document.getElementById('a_win').value) || 0,
+                    unforced: parseInt(document.getElementById('a_unf').value) || 0,
+                    double_faults: parseInt(document.getElementById('a_df').value) || 0
                 }}
+            });
+        }
+
+        function addPlayer(team) {
+            const prefix = team === 'home' ? 'h' : 'a';
+            const num = document.getElementById(`${prefix}_p_num`).value;
+            const name = document.getElementById(`${prefix}_p_name`).value;
+            const role = document.getElementById(`${prefix}_p_role`).value;
+            const status = document.getElementById(`${prefix}_p_status`).value;
+            if(!name) return;
+
+            let players = localState[`${team}_team`].players;
+            players.push({ number: num, name: name.toUpperCase(), role: role, status: status });
+
+            let payload = {}; payload[`${team}_team`] = { players: players };
+            emitUpdate(payload);
+
+            document.getElementById(`${prefix}_p_num`).value = '';
+            document.getElementById(`${prefix}_p_name`).value = '';
+            document.getElementById(`${prefix}_p_role`).value = '';
+        }
+
+        function removePlayer(team, index) {
+            let players = localState[`${team}_team`].players;
+            players.splice(index, 1);
+            let payload = {}; payload[`${team}_team`] = { players: players };
+            emitUpdate(payload);
+        }
+
+        function renderPlayerList(team) {
+            const list = document.getElementById(`${team}-player-list`);
+            list.innerHTML = '';
+            localState[`${team}_team`].players.forEach((p, idx) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-1 border-b border-gray-700';
+
+                const info = document.createElement('span');
+
+                const badge = document.createElement('span');
+                badge.className = (p.status === 'starter' ? 'bg-green-600' : 'bg-yellow-600') + ' text-xs px-1 rounded mr-2';
+                badge.textContent = p.status === 'starter' ? 'On Court' : 'Bench';
+                info.appendChild(badge);
+
+                const numB = document.createElement('b');
+                numB.textContent = p.number || '';
+                info.appendChild(numB);
+
+                info.appendChild(document.createTextNode(' ' + p.name + ' '));
+
+                const roleSpan = document.createElement('span');
+                roleSpan.className = 'text-gray-400 text-xs ml-1';
+                roleSpan.textContent = p.role ? `(${p.role})` : '';
+                info.appendChild(roleSpan);
+
+                li.appendChild(info);
+
+                const btn = document.createElement('button');
+                btn.className = 'text-red-500 hover:text-red-300';
+                btn.textContent = 'X';
+                btn.onclick = () => removePlayer(team, idx);
+                li.appendChild(btn);
+
+                list.appendChild(li);
+            });
+        }
+
+        function changeLineupSettings() {
+            emitUpdate({
+                current_lineup_team: document.getElementById('lineup_team').value,
+                current_lineup_type: document.getElementById('lineup_type').value
             });
         }
 

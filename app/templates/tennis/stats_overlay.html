@@ -97,7 +97,7 @@
     </div>
 
     <script>
-        const socket = io();
+        const socket = io("/tennis");
         socket.on('state_updated', (state) => {
             const box = document.getElementById('stats-box');
             if (state.visibility.stats) {

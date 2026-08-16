@@ -52,17 +52,31 @@
 
                 const list = document.getElementById('players-list');
                 list.innerHTML = '';
-                
+
                 // Filter only the requested players
                 const filteredPlayers = team.players.filter(p => p.status === lineupType);
-                
+
                 filteredPlayers.forEach(p => {
-                    list.innerHTML += `
-                        <div class="player-row">
-                            <div class="p-number" style="color: ${team.color}">${p.number}</div>
-                            <div class="p-name">${p.name}</div>
-                            <div class="p-role">${p.role || ''}</div>
-                        </div>`;
+                    const row = document.createElement('div');
+                    row.className = 'player-row';
+
+                    const numDiv = document.createElement('div');
+                    numDiv.className = 'p-number';
+                    numDiv.style.color = team.color;
+                    numDiv.textContent = p.number;
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'p-name';
+                    nameDiv.textContent = p.name;
+
+                    const roleDiv = document.createElement('div');
+                    roleDiv.className = 'p-role';
+                    roleDiv.textContent = p.role || '';
+
+                    row.appendChild(numDiv);
+                    row.appendChild(nameDiv);
+                    row.appendChild(roleDiv);
+                    list.appendChild(row);
                 });
                 box.classList.add('show');
             } else {

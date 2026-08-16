@@ -57,19 +57,19 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Main Scoreboard</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/overlay">
+                    <input type="text" readonly id="url-main-scoreboard" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Player Profile Lower Third</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/player_overlay">
+                    <input type="text" readonly id="url-player-profile" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Match Stats Graphic</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/stats_overlay">
+                    <input type="text" readonly id="url-match-stats" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Top-Right "REPLAY" Bug</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/volleyball/replay_overlay">
+                    <input type="text" readonly id="url-replay-bug" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
                 </div>
             </div>
         </div>
@@ -82,7 +82,11 @@
     </div>
 
     <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">Volleyball Control Panel</h1>
-    
+
+    <div id="match-over-banner" class="hidden bg-yellow-500 text-black font-bold text-center p-4 rounded-lg mb-6 text-xl">
+        <span id="match-over-text"></span>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
             <h2 class="text-xl font-bold mb-4 text-yellow-400">Match Time</h2>
@@ -114,6 +118,7 @@
             <div class="mt-4 p-4 bg-gray-900 rounded border border-gray-700 text-center">
                 <span class="text-gray-400 block mb-2">Current Set: <span id="current_set" class="text-white font-bold text-xl">1</span></span>
                 <button onclick="socket.emit('next_set')" class="bg-green-600 px-6 py-2 rounded font-bold">Start Next Set</button>
+                <button onclick="resetMatch()" class="bg-red-700 px-6 py-2 rounded font-bold ml-2">Reset Match</button>
             </div>
         </div>
     </div>
@@ -122,10 +127,13 @@
         <div class="border-r border-gray-700 pr-4">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-2xl font-bold text-blue-400">Home Team</h2>
-                <label class="flex items-center gap-2 cursor-pointer bg-gray-900 p-2 rounded">
-                    <input type="radio" name="server_toggle" onchange="setServer(0)" id="serve_home" class="w-5 h-5">
-                    <span class="font-bold text-yellow-400">SERVING</span>
-                </label>
+                <div class="flex items-center gap-2">
+                    <button onclick="callTimeout('home')" id="home_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-xs px-2 py-2 rounded font-bold">TIMEOUT (<span id="home_timeout_count">0</span>/2)</button>
+                    <label class="flex items-center gap-2 cursor-pointer bg-gray-900 p-2 rounded">
+                        <input type="radio" name="server_toggle" onchange="setServer(0)" id="serve_home" class="w-5 h-5">
+                        <span class="font-bold text-yellow-400">SERVING</span>
+                    </label>
+                </div>
             </div>
             
             <input type="text" id="home_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbr. (e.g. ITA)">
@@ -142,9 +150,9 @@
                     <input type="number" id="home_sets" class="w-full text-center bg-transparent text-3xl font-bold" value="0" onchange="updateScore('home')">
                 </div>
                 <div class="flex items-center justify-center gap-4">
-                    <button onclick="updatePoints('home', -1)" class="bg-gray-600 p-4 rounded text-xl">-</button>
+                    <button onclick="updatePoints('home', -1)" class="score-btn bg-gray-600 p-4 rounded text-xl disabled:opacity-30 disabled:cursor-not-allowed">-</button>
                     <span id="home_score" class="text-7xl font-bold text-center w-24">0</span>
-                    <button onclick="updatePoints('home', 1)" class="bg-blue-600 p-4 rounded text-xl">+</button>
+                    <button onclick="updatePoints('home', 1)" class="score-btn bg-blue-600 p-4 rounded text-xl disabled:opacity-30 disabled:cursor-not-allowed">+</button>
                 </div>
             </div>
         </div>
@@ -152,10 +160,13 @@
         <div class="pl-2">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-2xl font-bold text-red-400">Away Team</h2>
-                <label class="flex items-center gap-2 cursor-pointer bg-gray-900 p-2 rounded">
-                    <input type="radio" name="server_toggle" onchange="setServer(1)" id="serve_away" class="w-5 h-5">
-                    <span class="font-bold text-yellow-400">SERVING</span>
-                </label>
+                <div class="flex items-center gap-2">
+                    <button onclick="callTimeout('away')" id="away_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-xs px-2 py-2 rounded font-bold">TIMEOUT (<span id="away_timeout_count">0</span>/2)</button>
+                    <label class="flex items-center gap-2 cursor-pointer bg-gray-900 p-2 rounded">
+                        <input type="radio" name="server_toggle" onchange="setServer(1)" id="serve_away" class="w-5 h-5">
+                        <span class="font-bold text-yellow-400">SERVING</span>
+                    </label>
+                </div>
             </div>
             
             <input type="text" id="away_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbr. (e.g. BRA)">
@@ -172,9 +183,9 @@
                     <input type="number" id="away_sets" class="w-full text-center bg-transparent text-3xl font-bold" value="0" onchange="updateScore('away')">
                 </div>
                 <div class="flex items-center justify-center gap-4">
-                    <button onclick="updatePoints('away', -1)" class="bg-gray-600 p-4 rounded text-xl">-</button>
+                    <button onclick="updatePoints('away', -1)" class="score-btn bg-gray-600 p-4 rounded text-xl disabled:opacity-30 disabled:cursor-not-allowed">-</button>
                     <span id="away_score" class="text-7xl font-bold text-center w-24">0</span>
-                    <button onclick="updatePoints('away', 1)" class="bg-red-600 p-4 rounded text-xl">+</button>
+                    <button onclick="updatePoints('away', 1)" class="score-btn bg-red-600 p-4 rounded text-xl disabled:opacity-30 disabled:cursor-not-allowed">+</button>
                 </div>
             </div>
         </div>
@@ -219,7 +230,15 @@
     <script>
         const socket = io("/volleyball");
         let localState = { clock: { hours: 0, minutes: 0, seconds: 0 } };
-        
+
+        (function initObsUrls() {
+            const origin = window.location.origin;
+            document.getElementById('url-main-scoreboard').value = `${origin}/volleyball/overlay`;
+            document.getElementById('url-player-profile').value = `${origin}/volleyball/player_overlay`;
+            document.getElementById('url-match-stats').value = `${origin}/volleyball/stats_overlay`;
+            document.getElementById('url-replay-bug').value = `${origin}/volleyball/replay_overlay`;
+        })();
+
         socket.on('clock_tick', (clockData) => {
             if(!localState.clock) localState.clock = {};
             localState.clock.hours = clockData.hours;
@@ -240,6 +259,22 @@
             
             document.getElementById('serve_home').checked = state.serving_team_index === 0;
             document.getElementById('serve_away').checked = state.serving_team_index === 1;
+
+            document.getElementById('home_timeout_count').innerText = state.home_team.timeouts_used || 0;
+            document.getElementById('away_timeout_count').innerText = state.away_team.timeouts_used || 0;
+            document.getElementById('home_timeout_btn').disabled = (state.home_team.timeouts_used || 0) >= 2;
+            document.getElementById('away_timeout_btn').disabled = (state.away_team.timeouts_used || 0) >= 2;
+
+            const matchOverBanner = document.getElementById('match-over-banner');
+            if (state.match_over) {
+                const winnerTeam = state.match_winner === 'home_team' ? state.home_team : state.away_team;
+                document.getElementById('match-over-text').innerText =
+                    `MATCH OVER — ${winnerTeam.name || winnerTeam.abbr} WINS. Press "Reset Match" to start a new one.`;
+                matchOverBanner.classList.remove('hidden');
+            } else {
+                matchOverBanner.classList.add('hidden');
+            }
+            document.querySelectorAll('.score-btn').forEach(btn => btn.disabled = !!state.match_over);
 
             updateClockDisplay();
 
@@ -287,6 +322,7 @@
 
         function toggleVisibility(prop) {
             let payload = {}; payload[prop] = !localState[prop];
+            if (prop === 'timeout_visible') payload.timeout_team = null;
             emitUpdate(payload);
         }
 
@@ -304,14 +340,29 @@
         }
 
         function updatePoints(team, amount) {
-            let newScore = Math.max(0, localState[`${team}_team`].score + amount);
-            let payload = {}; payload[`${team}_team`] = {score: newScore};
-            emitUpdate(payload);
+            // The delta is always applied server-side against the authoritative live score,
+            // so a click that lands right after a set/match just ended can never overwrite
+            // a freshly reset scoreboard with a value computed from stale local state.
+            emitUpdate({ score_delta: { team: team, amount: amount } });
         }
 
         function updateScore(team) {
             let payload = {}; payload[`${team}_team`] = {sets_won: parseInt(document.getElementById(`${team}_sets`).value) || 0};
             emitUpdate(payload);
+        }
+
+        function callTimeout(team) {
+            const used = (localState[`${team}_team`] && localState[`${team}_team`].timeouts_used) || 0;
+            if (used >= 2) return;
+            let payload = { timeout_visible: true, timeout_team: team };
+            payload[`${team}_team`] = { timeouts_used: used + 1 };
+            emitUpdate(payload);
+        }
+
+        function resetMatch() {
+            if (confirm('Reset the entire match? This clears scores, sets and timeouts for both teams.')) {
+                socket.emit('reset_match');
+            }
         }
 
         function addPlayer(team) {
@@ -345,10 +396,23 @@
             const list = document.getElementById(`${team}-player-list`);
             list.innerHTML = '';
             localState[`${team}_team`].players.forEach((p, idx) => {
-                list.innerHTML += `<li class="flex justify-between p-1 border-b border-gray-700">
-                    <span><b>${p.number}</b> ${p.name} (${p.role})</span>
-                    <button onclick="removePlayer('${team}', ${idx})" class="text-red-500 hover:text-red-300">X</button>
-                </li>`;
+                const li = document.createElement('li');
+                li.className = 'flex justify-between p-1 border-b border-gray-700';
+
+                const span = document.createElement('span');
+                const b = document.createElement('b');
+                b.textContent = p.number;
+                span.appendChild(b);
+                span.appendChild(document.createTextNode(` ${p.name} (${p.role})`));
+
+                const btn = document.createElement('button');
+                btn.textContent = 'X';
+                btn.className = 'text-red-500 hover:text-red-300';
+                btn.onclick = () => removePlayer(team, idx);
+
+                li.appendChild(span);
+                li.appendChild(btn);
+                list.appendChild(li);
             });
         }
 
@@ -356,10 +420,19 @@
             if(!localState.home_team) return;
             const team = document.getElementById('select-player-team').value;
             const players = localState[`${team}_team`].players;
-            
-            let html = '<option value="">Select Player...</option>';
-            players.forEach((p, idx) => { html += `<option value="${idx}">${p.number}. ${p.name}</option>`; });
-            document.getElementById('select-player-name').innerHTML = html;
+
+            const select = document.getElementById('select-player-name');
+            select.innerHTML = '';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'Select Player...';
+            select.appendChild(defaultOpt);
+            players.forEach((p, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.textContent = `${p.number}. ${p.name}`;
+                select.appendChild(opt);
+            });
         }
 
         function showPlayer() {

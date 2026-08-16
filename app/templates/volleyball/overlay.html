@@ -52,6 +52,21 @@
         .set-dot { width: 14px; height: 14px; background: rgba(255,255,255,0.1); border-radius: 2px; }
         .set-dot.won { background: #fff; box-shadow: 0 0 5px rgba(255,255,255,0.8); }
 
+        /* TIMEOUTS USED */
+        .timeout-dots-container { display: flex; gap: 3px; margin: 0 10px 0 0; }
+        .timeout-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+        .timeout-dot.used { background: #eab308; box-shadow: 0 0 5px rgba(234,179,8,0.8); }
+
+        /* MATCH OVER */
+        .match-over-banner {
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            background: rgba(10,10,15,0.95); border: 1px solid #eab308; border-radius: 8px;
+            padding: 14px 40px; font-size: 22px; font-weight: 700; letter-spacing: 2px;
+            text-align: center; color: #fff; box-shadow: 0 15px 30px rgba(0,0,0,0.8);
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .match-over-banner.show { opacity: 1; }
+
         /* SCORE AND CENTRAL SET */
         .score-box {
             background: #000; font-family: 'Teko', sans-serif; font-size: 45px; font-weight: 600;
@@ -97,6 +112,7 @@
         
         <div class="alert-banner alert-timeout" id="timeout-banner">TIMEOUT</div>
         <div class="alert-banner alert-point" id="point-banner">MATCH POINT</div>
+        <div class="match-over-banner" id="match-over-banner"></div>
 
         <div class="hud-header">
             <span id="match-period">FINAL</span>
@@ -112,7 +128,11 @@
                 <div class="sets-won-container" id="home-sets-dots">
                     <div class="set-dot"></div><div class="set-dot"></div><div class="set-dot"></div>
                 </div>
-                
+
+                <div class="timeout-dots-container" id="home-timeout-dots">
+                    <div class="timeout-dot"></div><div class="timeout-dot"></div>
+                </div>
+
                 <div class="score-box" id="home-score">0</div>
                 <div class="serve-indicator"></div>
             </div>
@@ -129,7 +149,11 @@
                 <div class="sets-won-container" id="away-sets-dots">
                     <div class="set-dot"></div><div class="set-dot"></div><div class="set-dot"></div>
                 </div>
-                
+
+                <div class="timeout-dots-container" id="away-timeout-dots">
+                    <div class="timeout-dot"></div><div class="timeout-dot"></div>
+                </div>
+
                 <div class="score-box" id="away-score">0</div>
                 <div class="serve-indicator"></div>
             </div>
@@ -177,6 +201,10 @@
             renderSetDots('home', state.home_team.sets_won);
             renderSetDots('away', state.away_team.sets_won);
 
+            // Timeouts used (dots)
+            renderTimeoutDots('home', state.home_team.timeouts_used || 0);
+            renderTimeoutDots('away', state.away_team.timeouts_used || 0);
+
             // Sets history
             renderPreviousSets(state.previous_sets);
 
@@ -185,7 +213,14 @@
 
             // Timeout and Match Point
             const timeoutBanner = document.getElementById('timeout-banner');
-            if(state.timeout_visible) timeoutBanner.classList.add('show'); else timeoutBanner.classList.remove('show');
+            if(state.timeout_visible) {
+                const teamAbbr = state.timeout_team === 'home' ? state.home_team.abbr
+                    : state.timeout_team === 'away' ? state.away_team.abbr : '';
+                timeoutBanner.innerText = teamAbbr ? `${teamAbbr} TIMEOUT` : 'TIMEOUT';
+                timeoutBanner.classList.add('show');
+            } else {
+                timeoutBanner.classList.remove('show');
+            }
 
             const pointBanner = document.getElementById('point-banner');
             pointBanner.classList.remove('show');
@@ -194,12 +229,27 @@
             } else if (state.home_set_point || state.away_set_point) {
                 pointBanner.innerText = 'SET POINT'; pointBanner.classList.add('show');
             }
+
+            const matchOverBanner = document.getElementById('match-over-banner');
+            if(state.match_over) {
+                const winnerTeam = state.match_winner === 'home_team' ? state.home_team : state.away_team;
+                matchOverBanner.innerText = `MATCH FINISHED — ${winnerTeam.name || winnerTeam.abbr} WINS`;
+                matchOverBanner.classList.add('show');
+            } else {
+                matchOverBanner.classList.remove('show');
+            }
         });
 
         function renderSetDots(team, won) {
             let html = '';
             for(let i=0; i<3; i++) html += `<div class="set-dot ${i < won ? 'won' : ''}"></div>`;
             document.getElementById(`${team}-sets-dots`).innerHTML = html;
+        }
+
+        function renderTimeoutDots(team, used) {
+            let html = '';
+            for(let i=0; i<2; i++) html += `<div class="timeout-dot ${i < used ? 'used' : ''}"></div>`;
+            document.getElementById(`${team}-timeout-dots`).innerHTML = html;
         }
 
         function renderPreviousSets(sets) {
