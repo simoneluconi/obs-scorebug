@@ -212,10 +212,10 @@
             </summary>
             <div class="px-4 pb-4 pt-1 border-t border-gray-700">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                    <button id="toggle-scoreboard-btn" onclick="toggleVisibility('is_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">Main Scoreboard: OFF</span></button>
-                    <button id="toggle-timeout-btn" onclick="toggleVisibility('timeout_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">TIMEOUT gfx: OFF</span></button>
-                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats_overlay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">Stats/Summary: OFF</span></button>
-                    <button id="toggle-replay-btn" onclick="toggleVisibility('replay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">REPLAY bug: OFF</span></button>
+                    <button id="toggle-scoreboard-btn" onclick="toggleVisibility('is_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">scoreboard</span><span class="toggle-btn-label">Main Scoreboard: OFF</span></button>
+                    <button id="toggle-timeout-btn" onclick="toggleVisibility('timeout_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">timer</span><span class="toggle-btn-label">TIMEOUT gfx: OFF</span></button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats_overlay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">bar_chart</span><span class="toggle-btn-label">Stats/Summary: OFF</span></button>
+                    <button id="toggle-replay-btn" onclick="toggleVisibility('replay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">replay</span><span class="toggle-btn-label">REPLAY bug: OFF</span></button>
                 </div>
             </div>
         </details>
@@ -414,10 +414,9 @@
             if (!btn) return;
             btn.classList.toggle('bg-gray-600', !isOn);
             btn.classList.toggle(onColorClass, isOn);
-            const icon = btn.querySelector('.toggle-btn-icon');
+            btn.classList.toggle('opacity-60', !isOn);
             const labelSpan = btn.querySelector('.toggle-btn-label');
             const text = `${label}: ${isOn ? 'ON' : 'OFF'}`;
-            if (icon) icon.textContent = isOn ? 'visibility' : 'visibility_off';
             if (labelSpan) labelSpan.textContent = text; else btn.innerText = text;
         }
 

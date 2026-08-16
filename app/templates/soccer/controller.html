@@ -245,8 +245,8 @@
                 </div>
                 <div class="flex flex-wrap gap-3 mb-4">
                     <button onclick="updateStats()" class="bg-green-600 px-4 py-3 rounded font-bold flex items-center justify-center gap-1.5" style="min-height:48px;"><span class="material-icons text-base">save</span>Save Stats</button>
-                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 px-4 py-3 rounded font-bold flex items-center justify-center gap-1.5" style="min-height:48px;"><span id="toggle-stats-icon" class="material-icons text-base">visibility_off</span><span id="toggle-stats-label">Stats Overlay: OFF</span></button>
-                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 px-4 py-3 rounded font-bold flex items-center justify-center gap-1.5" style="min-height:48px;"><span id="toggle-lineup-icon" class="material-icons text-base">visibility_off</span><span id="toggle-lineup-label">Lineup Overlay: OFF</span></button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 px-4 py-3 rounded font-bold flex items-center justify-center gap-1.5 opacity-60" style="min-height:48px;"><span id="toggle-stats-icon" class="material-icons text-base">bar_chart</span><span id="toggle-stats-label">Stats Overlay: OFF</span></button>
+                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 px-4 py-3 rounded font-bold flex items-center justify-center gap-1.5 opacity-60" style="min-height:48px;"><span id="toggle-lineup-icon" class="material-icons text-base">groups</span><span id="toggle-lineup-label">Lineup Overlay: OFF</span></button>
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <select id="lineup_team" onchange="changeLineupSettings()" class="bg-gray-700 p-3 rounded flex-1 min-w-[140px]">
@@ -381,30 +381,28 @@
                 }
 
                 const btnStats = document.getElementById('toggle-stats-btn');
-                const btnStatsIcon = document.getElementById('toggle-stats-icon');
                 const btnStatsLabel = document.getElementById('toggle-stats-label');
                 if (state.visibility.stats) {
                     btnStats.classList.replace('bg-gray-600', 'bg-purple-600');
-                    btnStatsIcon.textContent = 'visibility';
+                    btnStats.classList.remove('opacity-60');
                     btnStatsLabel.textContent = 'Stats Overlay: ON';
                 } else {
                     btnStats.classList.replace('bg-purple-600', 'bg-gray-600');
-                    btnStatsIcon.textContent = 'visibility_off';
+                    btnStats.classList.add('opacity-60');
                     btnStatsLabel.textContent = 'Stats Overlay: OFF';
                 }
 
                 const btnLineup = document.getElementById('toggle-lineup-btn');
-                const btnLineupIcon = document.getElementById('toggle-lineup-icon');
                 const btnLineupLabel = document.getElementById('toggle-lineup-label');
                 if (state.visibility.lineup) {
                     btnLineup.classList.replace('bg-gray-600', 'bg-yellow-600');
                     btnLineup.classList.add('text-black');
-                    btnLineupIcon.textContent = 'visibility';
+                    btnLineup.classList.remove('opacity-60');
                     btnLineupLabel.textContent = 'Lineup Overlay: ON';
                 } else {
                     btnLineup.classList.replace('bg-yellow-600', 'bg-gray-600');
                     btnLineup.classList.remove('text-black');
-                    btnLineupIcon.textContent = 'visibility_off';
+                    btnLineup.classList.add('opacity-60');
                     btnLineupLabel.textContent = 'Lineup Overlay: OFF';
                 }
             }
