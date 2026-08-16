@@ -245,8 +245,8 @@
                 </div>
                 <div class="flex flex-wrap gap-3 mb-4">
                     <button onclick="updateStats()" class="bg-green-600 px-4 py-3 rounded font-bold" style="min-height:48px;">Save Stats</button>
-                    <button onclick="toggleVisibility('stats')" class="bg-purple-600 px-4 py-3 rounded font-bold" style="min-height:48px;">Toggle Stats</button>
-                    <button onclick="toggleVisibility('lineup')" class="bg-yellow-600 px-4 py-3 rounded font-bold text-black" style="min-height:48px;">Toggle Lineup</button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 px-4 py-3 rounded font-bold" style="min-height:48px;">Stats Overlay: OFF</button>
+                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 px-4 py-3 rounded font-bold" style="min-height:48px;">Lineup Overlay: OFF</button>
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <select id="lineup_team" onchange="changeLineupSettings()" class="bg-gray-700 p-3 rounded flex-1 min-w-[140px]">
@@ -374,6 +374,26 @@
                 } else {
                     btnPen.classList.replace('bg-pink-600', 'bg-gray-600');
                     btnPen.innerText = 'Show Penalties HUD';
+                }
+
+                const btnStats = document.getElementById('toggle-stats-btn');
+                if (state.visibility.stats) {
+                    btnStats.classList.replace('bg-gray-600', 'bg-purple-600');
+                    btnStats.innerText = 'Stats Overlay: ON';
+                } else {
+                    btnStats.classList.replace('bg-purple-600', 'bg-gray-600');
+                    btnStats.innerText = 'Stats Overlay: OFF';
+                }
+
+                const btnLineup = document.getElementById('toggle-lineup-btn');
+                if (state.visibility.lineup) {
+                    btnLineup.classList.replace('bg-gray-600', 'bg-yellow-600');
+                    btnLineup.classList.add('text-black');
+                    btnLineup.innerText = 'Lineup Overlay: ON';
+                } else {
+                    btnLineup.classList.replace('bg-yellow-600', 'bg-gray-600');
+                    btnLineup.classList.remove('text-black');
+                    btnLineup.innerText = 'Lineup Overlay: OFF';
                 }
             }
 
