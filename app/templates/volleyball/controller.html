@@ -125,7 +125,7 @@
                     <div class="flex items-center gap-1.5">
                         <label class="flex items-center gap-1 cursor-pointer bg-gray-800 px-2 py-1 rounded text-[10px] sm:text-xs font-bold text-yellow-400">
                             <input type="radio" name="server_toggle" onchange="setServer(0)" id="serve_home" class="w-3.5 h-3.5 accent-yellow-400">
-                            SERVE
+                            <span class="material-icons" style="font-size:1.1em">sports_volleyball</span>SERVE
                         </label>
                         <div class="bg-gray-800 rounded px-1 py-0.5 text-center leading-none">
                             <div class="text-[8px] text-gray-400 mb-0.5">SETS</div>
@@ -135,7 +135,7 @@
                                 <button type="button" onclick="adjustSets('home', 1)" class="set-step-btn bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded font-bold">+</button>
                             </div>
                         </div>
-                        <button onclick="callTimeout('home')" id="home_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] sm:text-xs px-2 py-1.5 rounded font-bold whitespace-nowrap">TO <span id="home_timeout_count">0</span>/2</button>
+                        <button onclick="callTimeout('home')" id="home_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] sm:text-xs px-2 py-1.5 rounded font-bold whitespace-nowrap flex items-center gap-1"><span class="material-icons" style="font-size:1.1em">pan_tool</span>TO <span id="home_timeout_count">0</span>/2</button>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -153,7 +153,7 @@
                     <div class="flex items-center gap-1.5">
                         <label class="flex items-center gap-1 cursor-pointer bg-gray-800 px-2 py-1 rounded text-[10px] sm:text-xs font-bold text-yellow-400">
                             <input type="radio" name="server_toggle" onchange="setServer(1)" id="serve_away" class="w-3.5 h-3.5 accent-yellow-400">
-                            SERVE
+                            <span class="material-icons" style="font-size:1.1em">sports_volleyball</span>SERVE
                         </label>
                         <div class="bg-gray-800 rounded px-1 py-0.5 text-center leading-none">
                             <div class="text-[8px] text-gray-400 mb-0.5">SETS</div>
@@ -163,7 +163,7 @@
                                 <button type="button" onclick="adjustSets('away', 1)" class="set-step-btn bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded font-bold">+</button>
                             </div>
                         </div>
-                        <button onclick="callTimeout('away')" id="away_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] sm:text-xs px-2 py-1.5 rounded font-bold whitespace-nowrap">TO <span id="away_timeout_count">0</span>/2</button>
+                        <button onclick="callTimeout('away')" id="away_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] sm:text-xs px-2 py-1.5 rounded font-bold whitespace-nowrap flex items-center gap-1"><span class="material-icons" style="font-size:1.1em">pan_tool</span>TO <span id="away_timeout_count">0</span>/2</button>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -179,8 +179,8 @@
         </div>
 
         <div class="bg-gray-800 rounded-lg shadow-lg p-4 mb-4 flex flex-wrap items-center justify-center gap-4">
-            <button onclick="socket.emit('next_set')" class="bg-green-600 hover:bg-green-500 px-5 py-3 rounded-lg font-bold text-sm sm:text-base">Start Next Set</button>
-            <button onclick="resetMatch()" class="bg-red-700 hover:bg-red-600 px-5 py-3 rounded-lg font-bold text-sm sm:text-base">Reset Match</button>
+            <button onclick="socket.emit('next_set')" class="bg-green-600 hover:bg-green-500 px-5 py-3 rounded-lg font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">skip_next</span>Start Next Set</button>
+            <button onclick="resetMatch()" class="bg-red-700 hover:bg-red-600 px-5 py-3 rounded-lg font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">restart_alt</span>Reset Match</button>
         </div>
 
         <details class="group bg-gray-800 rounded-lg shadow-lg mb-4">
@@ -191,15 +191,15 @@
             <div class="px-4 pb-4 pt-1 border-t border-gray-700">
                 <div class="text-4xl sm:text-5xl font-mono text-center my-3" id="clock-display">00:00:00</div>
                 <div class="grid grid-cols-2 gap-2 mb-4">
-                    <button onclick="clockAction('start')" class="bg-green-600 p-3 rounded font-bold hover:bg-green-500">PLAY</button>
-                    <button onclick="clockAction('stop')" class="bg-red-600 p-3 rounded font-bold hover:bg-red-500">PAUSE</button>
-                    <button onclick="clockAction('reset')" class="bg-gray-600 p-3 rounded font-bold col-span-2 hover:bg-gray-500">RESET TIMER</button>
+                    <button onclick="clockAction('start')" class="bg-green-600 p-3 rounded font-bold hover:bg-green-500 flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">play_arrow</span>PLAY</button>
+                    <button onclick="clockAction('stop')" class="bg-red-600 p-3 rounded font-bold hover:bg-red-500 flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">pause</span>PAUSE</button>
+                    <button onclick="clockAction('reset')" class="bg-gray-600 p-3 rounded font-bold col-span-2 hover:bg-gray-500 flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">restart_alt</span>RESET TIMER</button>
                 </div>
                 <div class="grid grid-cols-4 gap-2 mb-4">
                     <input type="number" id="sync-hour" class="bg-gray-700 p-2 rounded text-center" placeholder="H">
                     <input type="number" id="sync-min" class="bg-gray-700 p-2 rounded text-center" placeholder="M">
                     <input type="number" id="sync-sec" class="bg-gray-700 p-2 rounded text-center" placeholder="S">
-                    <button onclick="syncClock()" class="bg-blue-600 rounded hover:bg-blue-500 font-bold">Sync</button>
+                    <button onclick="syncClock()" class="bg-blue-600 rounded hover:bg-blue-500 font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">sync</span>Sync</button>
                 </div>
                 <input type="text" id="period-select" onkeyup="updatePeriod()" class="w-full bg-gray-700 p-2 rounded" placeholder="Tournament Stage (e.g. FINAL)">
             </div>
@@ -212,10 +212,10 @@
             </summary>
             <div class="px-4 pb-4 pt-1 border-t border-gray-700">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                    <button id="toggle-scoreboard-btn" onclick="toggleVisibility('is_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Main Scoreboard: OFF</button>
-                    <button id="toggle-timeout-btn" onclick="toggleVisibility('timeout_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">TIMEOUT gfx: OFF</button>
-                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats_overlay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Stats/Summary: OFF</button>
-                    <button id="toggle-replay-btn" onclick="toggleVisibility('replay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">REPLAY bug: OFF</button>
+                    <button id="toggle-scoreboard-btn" onclick="toggleVisibility('is_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">Main Scoreboard: OFF</span></button>
+                    <button id="toggle-timeout-btn" onclick="toggleVisibility('timeout_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">TIMEOUT gfx: OFF</span></button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats_overlay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">Stats/Summary: OFF</span></button>
+                    <button id="toggle-replay-btn" onclick="toggleVisibility('replay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons toggle-btn-icon" style="font-size:1.1em">visibility_off</span><span class="toggle-btn-label">REPLAY bug: OFF</span></button>
                 </div>
             </div>
         </details>
@@ -233,7 +233,7 @@
                     <div class="flex gap-2">
                         <input type="color" id="home_color" class="h-10 w-16 rounded" value="#3b82f6">
                         <input type="text" id="home_logo" class="flex-1 bg-gray-700 p-2 rounded" placeholder="Flag/Logo URL">
-                        <button onclick="updateTeamInfo('home')" class="bg-blue-600 px-4 rounded hover:bg-blue-500 font-bold">Save</button>
+                        <button onclick="updateTeamInfo('home')" class="bg-blue-600 px-4 rounded hover:bg-blue-500 font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">save</span>Save</button>
                     </div>
                 </div>
                 <div>
@@ -243,7 +243,7 @@
                     <div class="flex gap-2">
                         <input type="color" id="away_color" class="h-10 w-16 rounded" value="#ef4444">
                         <input type="text" id="away_logo" class="flex-1 bg-gray-700 p-2 rounded" placeholder="Flag/Logo URL">
-                        <button onclick="updateTeamInfo('away')" class="bg-red-600 px-4 rounded hover:bg-red-500 font-bold">Save</button>
+                        <button onclick="updateTeamInfo('away')" class="bg-red-600 px-4 rounded hover:bg-red-500 font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">save</span>Save</button>
                     </div>
                 </div>
             </div>
@@ -262,7 +262,7 @@
                             <input type="number" id="h_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
                             <input type="text" id="h_p_name" placeholder="Name" class="flex-1 min-w-[100px] bg-gray-700 p-2 rounded">
                             <input type="text" id="h_p_role" placeholder="Role" class="w-24 bg-gray-700 p-2 rounded">
-                            <button onclick="addPlayer('home')" class="bg-blue-600 px-4 py-2 rounded font-bold">Add</button>
+                            <button onclick="addPlayer('home')" class="bg-blue-600 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">person_add</span>Add</button>
                         </div>
                         <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
                     </div>
@@ -272,7 +272,7 @@
                             <input type="number" id="a_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
                             <input type="text" id="a_p_name" placeholder="Name" class="flex-1 min-w-[100px] bg-gray-700 p-2 rounded">
                             <input type="text" id="a_p_role" placeholder="Role" class="w-24 bg-gray-700 p-2 rounded">
-                            <button onclick="addPlayer('away')" class="bg-red-600 px-4 py-2 rounded font-bold">Add</button>
+                            <button onclick="addPlayer('away')" class="bg-red-600 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">person_add</span>Add</button>
                         </div>
                         <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
                     </div>
@@ -285,8 +285,8 @@
                             <option value="home">Home</option><option value="away">Away</option>
                         </select>
                         <select id="select-player-name" class="bg-gray-700 p-2 rounded flex-1 min-w-[140px]"><option>Select Player...</option></select>
-                        <button onclick="showPlayer()" class="bg-purple-600 px-6 rounded font-bold py-2">SHOW</button>
-                        <button onclick="hidePlayer()" class="bg-gray-600 px-6 rounded font-bold py-2">HIDE</button>
+                        <button onclick="showPlayer()" class="bg-purple-600 px-6 rounded font-bold py-2 flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">visibility</span>SHOW</button>
+                        <button onclick="hidePlayer()" class="bg-gray-600 px-6 rounded font-bold py-2 flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">visibility_off</span>HIDE</button>
                     </div>
                 </div>
             </div>
@@ -414,7 +414,11 @@
             if (!btn) return;
             btn.classList.toggle('bg-gray-600', !isOn);
             btn.classList.toggle(onColorClass, isOn);
-            btn.innerText = `${label}: ${isOn ? 'ON' : 'OFF'}`;
+            const icon = btn.querySelector('.toggle-btn-icon');
+            const labelSpan = btn.querySelector('.toggle-btn-label');
+            const text = `${label}: ${isOn ? 'ON' : 'OFF'}`;
+            if (icon) icon.textContent = isOn ? 'visibility' : 'visibility_off';
+            if (labelSpan) labelSpan.textContent = text; else btn.innerText = text;
         }
 
         function setServer(index) { emitUpdate({ serving_team_index: index }); }
@@ -503,8 +507,8 @@
                 span.appendChild(document.createTextNode(` ${p.name} (${p.role})`));
 
                 const btn = document.createElement('button');
-                btn.textContent = 'X';
-                btn.className = 'text-red-500 hover:text-red-300';
+                btn.innerHTML = '<span class="material-icons" style="font-size:1.1em">close</span>';
+                btn.className = 'text-red-500 hover:text-red-300 flex items-center';
                 btn.onclick = () => removePlayer(team, idx);
 
                 li.appendChild(span);
