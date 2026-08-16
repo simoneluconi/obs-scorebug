@@ -2,30 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Soccer Control Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <style> 
-        body { background-color: #111827; color: #f3f4f6; } 
+    <style>
+        body { background-color: #111827; color: #f3f4f6; }
         .info-modal {
             display: none;
             position: fixed;
+            inset: 0;
             z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
             background-color: rgba(0,0,0,0.7);
         }
         .info-modal-content {
             background-color: #1f2937;
-            margin: 15% auto;
             padding: 2rem;
             border: 1px solid #374151;
-            width: 80%;
+            width: 100%;
             max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
             border-radius: 12px;
             position: relative;
         }
@@ -39,15 +40,21 @@
             cursor: pointer;
         }
         .info-button {
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary .chevron { transition: transform 0.2s ease; display: inline-block; }
+        details[open] > summary .chevron { transform: rotate(90deg); }
+        .tap-btn { min-height: 56px; min-width: 56px; }
     </style>
 </head>
-<body class="p-6">
+<body class="pb-10">
 
     <div id="infoModal" class="info-modal">
         <div class="info-modal-content">
@@ -71,205 +78,271 @@
         </div>
     </div>
 
-    <div class="absolute top-4 right-4">
-        <button onclick="document.getElementById('infoModal').style.display='block'" class="info-button bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-colors">
-            <span class="material-icons">info</span>
-        </button>
-    </div>
-
-    <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">Soccer Control Panel</h1>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-yellow-400">Timer</h2>
-            <div class="text-5xl font-mono text-center mb-4" id="clock-display">00:00</div>
-            
-            <div class="grid grid-cols-2 gap-2 mb-4">
-                <button onclick="clockAction('start')" class="bg-green-600 p-2 rounded font-bold hover:bg-green-500">START</button>
-                <button onclick="clockAction('stop')" class="bg-red-600 p-2 rounded font-bold hover:bg-red-500">STOP</button>
-                <button onclick="clockAction('reset')" class="bg-gray-600 p-2 rounded font-bold col-span-2 hover:bg-gray-500">RESET</button>
+    <div id="sticky-bar" class="sticky top-0 z-40 bg-gray-900/95 backdrop-blur border-b border-gray-700 px-3 py-2 sm:px-4 sm:py-3 shadow-lg">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+                <span class="material-icons text-blue-400 text-xl">sports_soccer</span>
+                <span class="font-bold text-sm sm:text-lg text-blue-300">Soccer Control Panel</span>
             </div>
-            
-            <div class="flex gap-2 mb-4">
-                <input type="number" id="sync-min" class="w-1/2 bg-gray-700 p-2 rounded" placeholder="Min">
-                <input type="number" id="sync-sec" class="w-1/2 bg-gray-700 p-2 rounded" placeholder="Sec">
-                <button onclick="syncClock()" class="bg-blue-600 p-2 rounded hover:bg-blue-500">Sync</button>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5" title="Live connection status">
+                    <span id="connection-dot" class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+                    <span id="connection-text" class="text-xs text-gray-400">Connecting...</span>
+                </div>
+                <button onclick="document.getElementById('infoModal').style.display='flex'" class="info-button bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-colors">
+                    <span class="material-icons text-lg">info</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-[1fr_auto_1fr] gap-2 sm:gap-4 items-stretch">
+            <div class="order-1 flex items-center justify-center gap-2 bg-blue-950/40 rounded-lg p-2">
+                <button onclick="updateScore('home', -1)" class="tap-btn bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-2xl">&minus;</button>
+                <div class="text-center px-1 leading-tight">
+                    <div class="text-[10px] uppercase tracking-wide text-blue-300">Home</div>
+                    <span id="home_score" class="text-4xl sm:text-5xl font-extrabold leading-none">0</span>
+                </div>
+                <button onclick="updateScore('home', 1)" class="tap-btn bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-2xl">+</button>
             </div>
 
-            <div class="mb-2">
-                <label class="block text-sm mb-1">Stoppage Time (+ Mins)</label>
+            <div class="order-3 sm:order-2 col-span-2 sm:col-span-1 flex flex-col items-center justify-center bg-gray-800 rounded-lg p-2">
+                <div id="clock-display" class="text-3xl sm:text-4xl font-mono font-extrabold tracking-wider mb-2">00:00</div>
                 <div class="flex gap-2">
-                    <input type="number" id="stoppage" class="w-full bg-gray-700 p-2 rounded" value="0">
-                    <button onclick="updateStoppage(true)" class="bg-yellow-600 p-2 rounded px-4 hover:bg-yellow-500">Show</button>
-                    <button onclick="updateStoppage(false)" class="bg-gray-600 p-2 rounded px-4 hover:bg-gray-500">Hide</button>
+                    <button onclick="clockAction('start')" class="tap-btn bg-green-600 hover:bg-green-500 rounded-lg font-bold text-xs sm:text-sm px-2">START</button>
+                    <button onclick="clockAction('stop')" class="tap-btn bg-red-600 hover:bg-red-500 rounded-lg font-bold text-xs sm:text-sm px-2">STOP</button>
+                    <button onclick="if(confirm('Reset the match clock to 00:00? This is visible on the live overlay.')) clockAction('reset')" class="tap-btn bg-gray-600 hover:bg-gray-500 rounded-lg font-bold text-xs sm:text-sm px-2">RESET</button>
                 </div>
             </div>
-            
-            <select id="period-select" onchange="updatePeriod()" class="w-full bg-gray-700 p-2 rounded mt-2">
-                <option value="1st HALF">1st HALF</option>
-                <option value="HALF TIME">HALF TIME</option>
-                <option value="2nd HALF">2nd HALF</option>
-                <option value="FULL TIME">FULL TIME</option>
-            </select>
 
-            <div class="mt-4">
-                <label class="block text-sm mb-1">Competition / Matchday</label>
-                <input type="text" id="competition" onchange="updateCompetition()" class="w-full bg-gray-700 p-2 rounded" placeholder="e.g. Serie A - Matchday 12">
-            </div>
-        </div>
-
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg col-span-2 grid grid-cols-2 gap-6">
-            <div>
-                <h2 class="text-xl font-bold mb-2 text-blue-400">Home Team</h2>
-                <input type="text" id="home_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbreviation (e.g. HOM)">
-                <input type="color" id="home_color" class="w-full h-10 rounded mb-2" value="#1d4ed8">
-                <input type="text" id="home_logo" class="w-full bg-gray-700 p-2 rounded mb-4" placeholder="Logo URL">
-                <button onclick="updateTeamInfo('home')" class="w-full bg-blue-600 p-2 rounded mb-4 hover:bg-blue-500">Save Home Info</button>
-                
-                <div class="flex items-center justify-center gap-4 mb-4">
-                    <button onclick="updateScore('home', -1)" class="bg-gray-600 p-4 rounded text-xl hover:bg-gray-500">-</button>
-                    <span id="home_score" class="text-5xl font-bold">0</span>
-                    <button onclick="updateScore('home', 1)" class="bg-blue-600 p-4 rounded text-xl hover:bg-blue-500">+</button>
+            <div class="order-2 sm:order-3 flex items-center justify-center gap-2 bg-red-950/40 rounded-lg p-2">
+                <button onclick="updateScore('away', -1)" class="tap-btn bg-gray-700 hover:bg-gray-600 rounded-lg font-bold text-2xl">&minus;</button>
+                <div class="text-center px-1 leading-tight">
+                    <div class="text-[10px] uppercase tracking-wide text-red-300">Away</div>
+                    <span id="away_score" class="text-4xl sm:text-5xl font-extrabold leading-none">0</span>
                 </div>
-            </div>
-            
-            <div>
-                <h2 class="text-xl font-bold mb-2 text-red-400">Away Team</h2>
-                <input type="text" id="away_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbreviation (e.g. GUE)">
-                <input type="color" id="away_color" class="w-full h-10 rounded mb-2" value="#b91c1c">
-                <input type="text" id="away_logo" class="w-full bg-gray-700 p-2 rounded mb-4" placeholder="Logo URL">
-                <button onclick="updateTeamInfo('away')" class="w-full bg-red-600 p-2 rounded mb-4 hover:bg-red-500">Save Away Info</button>
-                
-                <div class="flex items-center justify-center gap-4 mb-4">
-                    <button onclick="updateScore('away', -1)" class="bg-gray-600 p-4 rounded text-xl hover:bg-gray-500">-</button>
-                    <span id="away_score" class="text-5xl font-bold">0</span>
-                    <button onclick="updateScore('away', 1)" class="bg-red-600 p-4 rounded text-xl hover:bg-red-500">+</button>
-                </div>
+                <button onclick="updateScore('away', 1)" class="tap-btn bg-red-600 hover:bg-red-500 rounded-lg font-bold text-2xl">+</button>
             </div>
         </div>
     </div>
 
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6 border border-pink-500">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-pink-400">Penalty Shootout</h2>
-            <button onclick="togglePenalties()" id="btn-penalties" class="bg-gray-600 px-4 py-2 rounded font-bold">Show Penalties HUD</button>
-        </div>
-        <div class="grid grid-cols-2 gap-6">
-            <div class="bg-gray-700 p-4 rounded text-center">
-                <h3 class="font-bold text-blue-300 mb-2">Home Penalties</h3>
-                <button onclick="addPenalty('home', true)" class="bg-green-600 px-3 py-1 rounded">⚽ Scored</button>
-                <button onclick="addPenalty('home', false)" class="bg-red-600 px-3 py-1 rounded">❌ Missed</button>
-                <button onclick="removePenalty('home')" class="bg-gray-500 px-3 py-1 rounded ml-2">Undo</button>
-            </div>
-            <div class="bg-gray-700 p-4 rounded text-center">
-                <h3 class="font-bold text-red-300 mb-2">Away Penalties</h3>
-                <button onclick="addPenalty('away', true)" class="bg-green-600 px-3 py-1 rounded">⚽ Scored</button>
-                <button onclick="addPenalty('away', false)" class="bg-red-600 px-3 py-1 rounded">❌ Missed</button>
-                <button onclick="removePenalty('away')" class="bg-gray-500 px-3 py-1 rounded ml-2">Undo</button>
-            </div>
-        </div>
-    </div>
+    <div class="max-w-5xl mx-auto p-4 sm:p-6">
 
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
-        <h2 class="text-xl font-bold text-white mb-4">Stats & Overlay Management</h2>
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <h3 class="font-bold text-blue-300 mb-2">Home Stats</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="h_stat_shots" placeholder="Shots" class="bg-gray-700 p-2 rounded">
-                    <input type="number" id="h_stat_possession" placeholder="Possession %" class="bg-gray-700 p-2 rounded">
-                    <input type="number" id="h_stat_fouls" placeholder="Fouls" class="bg-gray-700 p-2 rounded">
-                    <input type="number" id="h_stat_corners" placeholder="Corners" class="bg-gray-700 p-2 rounded">
-                </div>
-            </div>
-            <div>
-                <h3 class="font-bold text-red-300 mb-2">Away Stats</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="a_stat_shots" placeholder="Shots" class="bg-gray-700 p-2 rounded">
-                    <input type="number" id="a_stat_possession" placeholder="Possession %" class="bg-gray-700 p-2 rounded">
-                    <input type="number" id="a_stat_fouls" placeholder="Fouls" class="bg-gray-700 p-2 rounded">
-                    <input type="number" id="a_stat_corners" placeholder="Corners" class="bg-gray-700 p-2 rounded">
-                </div>
-            </div>
-        </div>
-        <div class="flex gap-4 mb-4">
-            <button onclick="updateStats()" class="bg-green-600 px-4 py-2 rounded font-bold">Save Stats</button>
-            <button onclick="toggleVisibility('stats')" class="bg-purple-600 px-4 py-2 rounded font-bold">Toggle Stats</button>
-            <button onclick="toggleVisibility('lineup')" class="bg-yellow-600 px-4 py-2 rounded font-bold text-black">Toggle Lineup</button>
-        </div>
-        <div class="flex gap-4">
-            <select id="lineup_team" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
-                <option value="home">Home Team</option>
-                <option value="away">Away Team</option>
-            </select>
-            <select id="lineup_type" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
-                <option value="starter">Show Starters</option>
-                <option value="substitute">Show Substitutes</option>
-            </select>
-        </div>
-    </div>
+        <div class="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg mb-4">
+            <h2 class="text-lg sm:text-xl font-bold mb-4 text-yellow-400 flex items-center gap-2"><span class="material-icons text-base">tune</span>Timer Details</h2>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold text-blue-400 mb-4">Home Roster</h2>
             <div class="flex gap-2 mb-4">
-                <input type="number" id="h_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
-                <input type="text" id="h_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
-                <select id="h_p_role" class="bg-gray-700 p-2 rounded w-20">
-                    <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
-                </select>
-                <select id="h_p_status" class="bg-gray-700 p-2 rounded">
-                    <option value="starter">Starter</option>
-                    <option value="substitute">Substitute</option>
-                </select>
-                <button onclick="addPlayer('home')" class="bg-blue-600 px-3 py-2 rounded font-bold hover:bg-blue-500">Add</button>
+                <input type="number" id="sync-min" class="w-1/2 bg-gray-700 p-3 rounded" placeholder="Min">
+                <input type="number" id="sync-sec" class="w-1/2 bg-gray-700 p-3 rounded" placeholder="Sec">
+                <button onclick="syncClock()" class="bg-blue-600 px-4 rounded hover:bg-blue-500 font-bold">Sync</button>
             </div>
-            <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+
+            <div class="mb-4">
+                <label class="block text-sm mb-1 text-gray-300">Stoppage Time (+ Mins)</label>
+                <div class="flex gap-2">
+                    <input type="number" id="stoppage" class="w-full bg-gray-700 p-3 rounded" value="0">
+                    <button onclick="updateStoppage(true)" class="bg-yellow-600 rounded px-4 hover:bg-yellow-500 font-bold whitespace-nowrap">Show</button>
+                    <button onclick="updateStoppage(false)" class="bg-gray-600 rounded px-4 hover:bg-gray-500 font-bold whitespace-nowrap">Hide</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm mb-1 text-gray-300">Period</label>
+                    <select id="period-select" onchange="updatePeriod()" class="w-full bg-gray-700 p-3 rounded">
+                        <option value="1st HALF">1st HALF</option>
+                        <option value="HALF TIME">HALF TIME</option>
+                        <option value="2nd HALF">2nd HALF</option>
+                        <option value="FULL TIME">FULL TIME</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm mb-1 text-gray-300">Competition / Matchday</label>
+                    <input type="text" id="competition" onchange="updateCompetition()" class="w-full bg-gray-700 p-3 rounded" placeholder="e.g. Serie A - Matchday 12">
+                </div>
+            </div>
         </div>
 
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold text-red-400 mb-4">Away Roster</h2>
-            <div class="flex gap-2 mb-4">
-                <input type="number" id="a_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
-                <input type="text" id="a_p_name" placeholder="Name" class="flex-1 bg-gray-700 p-2 rounded">
-                <select id="a_p_role" class="bg-gray-700 p-2 rounded w-20">
-                    <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
-                </select>
-                <select id="a_p_status" class="bg-gray-700 p-2 rounded">
-                    <option value="starter">Starter</option>
-                    <option value="substitute">Substitute</option>
-                </select>
-                <button onclick="addPlayer('away')" class="bg-red-600 px-3 py-2 rounded font-bold hover:bg-red-500">Add</button>
+        <details open class="bg-gray-800 rounded-lg shadow-lg mb-4">
+            <summary class="p-4 sm:p-6 font-bold text-lg flex items-center justify-between text-purple-400">
+                <span class="flex items-center gap-2"><span class="material-icons text-base">bolt</span>Events Control</span>
+                <span class="material-icons chevron">chevron_right</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <select id="event-team" onchange="updateEventDropdowns()" class="bg-gray-700 p-3 rounded">
+                        <option value="home">Home</option>
+                        <option value="away">Away</option>
+                    </select>
+                    <select id="event-type" class="bg-gray-700 p-3 rounded">
+                        <option value="goal">⚽ GOAL</option>
+                        <option value="yellow_card">🟨 Yellow Card</option>
+                        <option value="red_card">🟥 Red Card</option>
+                        <option value="sub">🔄 Substitution</option>
+                    </select>
+                    <select id="event-player1" class="bg-gray-700 p-3 rounded col-span-2 sm:col-span-1"><option>Player (In/Scorer)...</option></select>
+                    <select id="event-player2" class="bg-gray-700 p-3 rounded col-span-2 sm:col-span-1"><option>Player (Out)...</option></select>
+                </div>
+                <div class="flex flex-wrap gap-3 mt-4">
+                    <button onclick="sendEvent()" class="tap-btn bg-purple-600 hover:bg-purple-500 px-6 rounded font-bold flex-1 sm:flex-none">Show Event</button>
+                    <button onclick="hideEvent()" class="tap-btn bg-gray-600 hover:bg-gray-500 px-6 rounded font-bold flex-1 sm:flex-none">Hide Event</button>
+                </div>
             </div>
-            <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
-        </div>
-    </div>
+        </details>
 
-    <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h2 class="text-xl font-bold mb-4 text-purple-400">Events Control</h2>
-        <div class="grid grid-cols-4 gap-4">
-            <select id="event-team" onchange="updateEventDropdowns()" class="bg-gray-700 p-2 rounded">
-                <option value="home">Home</option>
-                <option value="away">Away</option>
-            </select>
-            <select id="event-type" class="bg-gray-700 p-2 rounded">
-                <option value="goal">⚽ GOAL</option>
-                <option value="yellow_card">🟨 Yellow Card</option>
-                <option value="red_card">🟥 Red Card</option>
-                <option value="sub">🔄 Substitution</option>
-            </select>
-            <select id="event-player1" class="bg-gray-700 p-2 rounded"><option>Player (In/Scorer)...</option></select>
-            <select id="event-player2" class="bg-gray-700 p-2 rounded"><option>Player (Out)...</option></select>
-        </div>
-        <div class="flex gap-4 mt-4">
-            <button onclick="sendEvent()" class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded font-bold">Show Event</button>
-            <button onclick="hideEvent()" class="bg-gray-600 hover:bg-gray-500 px-6 py-2 rounded font-bold">Hide Event</button>
-        </div>
+        <details class="bg-gray-800 rounded-lg shadow-lg mb-4 border border-pink-500">
+            <summary class="p-4 sm:p-6 font-bold text-lg flex items-center justify-between text-pink-400">
+                <span class="flex items-center gap-2"><span class="material-icons text-base">sports</span>Penalty Shootout</span>
+                <span class="material-icons chevron">chevron_right</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6">
+                <button onclick="togglePenalties()" id="btn-penalties" class="bg-gray-600 px-4 py-3 rounded font-bold mb-4 w-full sm:w-auto" style="min-height:48px;">Show Penalties HUD</button>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-gray-700 p-4 rounded text-center">
+                        <h3 class="font-bold text-blue-300 mb-2">Home Penalties</h3>
+                        <div class="flex flex-wrap gap-2 justify-center">
+                            <button onclick="addPenalty('home', true)" class="bg-green-600 px-3 py-2 rounded">⚽ Scored</button>
+                            <button onclick="addPenalty('home', false)" class="bg-red-600 px-3 py-2 rounded">❌ Missed</button>
+                            <button onclick="removePenalty('home')" class="bg-gray-500 px-3 py-2 rounded">Undo</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded text-center">
+                        <h3 class="font-bold text-red-300 mb-2">Away Penalties</h3>
+                        <div class="flex flex-wrap gap-2 justify-center">
+                            <button onclick="addPenalty('away', true)" class="bg-green-600 px-3 py-2 rounded">⚽ Scored</button>
+                            <button onclick="addPenalty('away', false)" class="bg-red-600 px-3 py-2 rounded">❌ Missed</button>
+                            <button onclick="removePenalty('away')" class="bg-gray-500 px-3 py-2 rounded">Undo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="bg-gray-800 rounded-lg shadow-lg mb-4">
+            <summary class="p-4 sm:p-6 font-bold text-lg flex items-center justify-between text-white">
+                <span class="flex items-center gap-2"><span class="material-icons text-base">bar_chart</span>Stats &amp; Overlay Management</span>
+                <span class="material-icons chevron">chevron_right</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <h3 class="font-bold text-blue-300 mb-2">Home Stats</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="h_stat_shots" placeholder="Shots" class="bg-gray-700 p-3 rounded">
+                            <input type="number" id="h_stat_possession" placeholder="Possession %" class="bg-gray-700 p-3 rounded">
+                            <input type="number" id="h_stat_fouls" placeholder="Fouls" class="bg-gray-700 p-3 rounded">
+                            <input type="number" id="h_stat_corners" placeholder="Corners" class="bg-gray-700 p-3 rounded">
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-red-300 mb-2">Away Stats</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="number" id="a_stat_shots" placeholder="Shots" class="bg-gray-700 p-3 rounded">
+                            <input type="number" id="a_stat_possession" placeholder="Possession %" class="bg-gray-700 p-3 rounded">
+                            <input type="number" id="a_stat_fouls" placeholder="Fouls" class="bg-gray-700 p-3 rounded">
+                            <input type="number" id="a_stat_corners" placeholder="Corners" class="bg-gray-700 p-3 rounded">
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <button onclick="updateStats()" class="bg-green-600 px-4 py-3 rounded font-bold" style="min-height:48px;">Save Stats</button>
+                    <button onclick="toggleVisibility('stats')" class="bg-purple-600 px-4 py-3 rounded font-bold" style="min-height:48px;">Toggle Stats</button>
+                    <button onclick="toggleVisibility('lineup')" class="bg-yellow-600 px-4 py-3 rounded font-bold text-black" style="min-height:48px;">Toggle Lineup</button>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <select id="lineup_team" onchange="changeLineupSettings()" class="bg-gray-700 p-3 rounded flex-1 min-w-[140px]">
+                        <option value="home">Home Team</option>
+                        <option value="away">Away Team</option>
+                    </select>
+                    <select id="lineup_type" onchange="changeLineupSettings()" class="bg-gray-700 p-3 rounded flex-1 min-w-[140px]">
+                        <option value="starter">Show Starters</option>
+                        <option value="substitute">Show Substitutes</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
+        <details class="bg-gray-800 rounded-lg shadow-lg mb-4">
+            <summary class="p-4 sm:p-6 font-bold text-lg flex items-center justify-between text-blue-300">
+                <span class="flex items-center gap-2"><span class="material-icons text-base">palette</span>Team Setup</span>
+                <span class="material-icons chevron">chevron_right</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-bold mb-2 text-blue-400">Home Team</h3>
+                    <input type="text" id="home_abbr" class="w-full bg-gray-700 p-3 rounded mb-2" placeholder="Abbreviation (e.g. HOM)">
+                    <input type="color" id="home_color" class="w-full h-12 rounded mb-2" value="#1d4ed8">
+                    <input type="text" id="home_logo" class="w-full bg-gray-700 p-3 rounded mb-3" placeholder="Logo URL">
+                    <button onclick="updateTeamInfo('home')" class="w-full bg-blue-600 p-3 rounded font-bold hover:bg-blue-500" style="min-height:48px;">Save Home Info</button>
+                </div>
+                <div>
+                    <h3 class="font-bold mb-2 text-red-400">Away Team</h3>
+                    <input type="text" id="away_abbr" class="w-full bg-gray-700 p-3 rounded mb-2" placeholder="Abbreviation (e.g. GUE)">
+                    <input type="color" id="away_color" class="w-full h-12 rounded mb-2" value="#b91c1c">
+                    <input type="text" id="away_logo" class="w-full bg-gray-700 p-3 rounded mb-3" placeholder="Logo URL">
+                    <button onclick="updateTeamInfo('away')" class="w-full bg-red-600 p-3 rounded font-bold hover:bg-red-500" style="min-height:48px;">Save Away Info</button>
+                </div>
+            </div>
+        </details>
+
+        <details class="bg-gray-800 rounded-lg shadow-lg mb-4">
+            <summary class="p-4 sm:p-6 font-bold text-lg flex items-center justify-between text-white">
+                <span class="flex items-center gap-2"><span class="material-icons text-base">groups</span>Roster</span>
+                <span class="material-icons chevron">chevron_right</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-bold text-blue-400 mb-3">Home Roster</h3>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <input type="number" id="h_p_num" placeholder="No." class="w-16 bg-gray-700 p-3 rounded">
+                        <input type="text" id="h_p_name" placeholder="Name" class="flex-1 min-w-[120px] bg-gray-700 p-3 rounded">
+                        <select id="h_p_role" class="bg-gray-700 p-3 rounded w-20">
+                            <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
+                        </select>
+                        <select id="h_p_status" class="bg-gray-700 p-3 rounded">
+                            <option value="starter">Starter</option>
+                            <option value="substitute">Substitute</option>
+                        </select>
+                        <button onclick="addPlayer('home')" class="bg-blue-600 px-4 py-2 rounded font-bold hover:bg-blue-500" style="min-height:48px;">Add</button>
+                    </div>
+                    <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-red-400 mb-3">Away Roster</h3>
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <input type="number" id="a_p_num" placeholder="No." class="w-16 bg-gray-700 p-3 rounded">
+                        <input type="text" id="a_p_name" placeholder="Name" class="flex-1 min-w-[120px] bg-gray-700 p-3 rounded">
+                        <select id="a_p_role" class="bg-gray-700 p-3 rounded w-20">
+                            <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
+                        </select>
+                        <select id="a_p_status" class="bg-gray-700 p-3 rounded">
+                            <option value="starter">Starter</option>
+                            <option value="substitute">Substitute</option>
+                        </select>
+                        <button onclick="addPlayer('away')" class="bg-red-600 px-4 py-2 rounded font-bold hover:bg-red-500" style="min-height:48px;">Add</button>
+                    </div>
+                    <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
+                </div>
+            </div>
+        </details>
+
     </div>
 
     <script>
         const socket = io("/soccer");
         let localState = { clock: { minutes: 0, seconds: 0 }, penalties: { active: false } };
+
+        socket.on('connect', () => {
+            document.getElementById('connection-dot').className = 'w-2.5 h-2.5 rounded-full bg-green-500';
+            const t = document.getElementById('connection-text');
+            t.textContent = 'Connected';
+            t.className = 'text-xs text-green-400';
+        });
+        socket.on('disconnect', () => {
+            document.getElementById('connection-dot').className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+            const t = document.getElementById('connection-text');
+            t.textContent = 'Disconnected';
+            t.className = 'text-xs text-red-400';
+        });
 
         document.getElementById('url-overlay').value = `${window.location.origin}/soccer/overlay`;
         document.getElementById('url-stats').value = `${window.location.origin}/soccer/stats`;
@@ -285,15 +358,15 @@
         socket.on('state_updated', (state) => {
             const isFirstLoad = !localState.home_team;
             localState = state;
-            
+
             document.getElementById('home_score').innerText = state.home_team.score;
             document.getElementById('away_score').innerText = state.away_team.score;
-            
+
             updateClockDisplay();
 
-            if(localState.home_team) { 
-                renderPlayerList('home'); renderPlayerList('away'); 
-                
+            if(localState.home_team) {
+                renderPlayerList('home'); renderPlayerList('away');
+
                 const btnPen = document.getElementById('btn-penalties');
                 if(state.penalties.active) {
                     btnPen.classList.replace('bg-gray-600', 'bg-pink-600');
@@ -303,7 +376,7 @@
                     btnPen.innerText = 'Show Penalties HUD';
                 }
             }
-            
+
             if (isFirstLoad && localState.home_team) {
                 updateEventDropdowns();
                 document.getElementById('home_abbr').value = state.home_team.abbr;
@@ -404,14 +477,14 @@
             const role = document.getElementById(`${prefix}_p_role`).value;
             const status = document.getElementById(`${prefix}_p_status`).value;
             if(!num || !name) return;
-            
+
             let players = localState[`${team}_team`].players;
             players.push({ number: num, name: name.toUpperCase(), role: role, status: status });
             players.sort((a,b) => parseInt(a.number) - parseInt(b.number));
-            
+
             let payload = {}; payload[`${team}_team`] = { players: players };
             emitUpdate(payload);
-            
+
             document.getElementById(`${prefix}_p_num`).value = '';
             document.getElementById(`${prefix}_p_name`).value = '';
             updateEventDropdowns();
@@ -504,9 +577,9 @@
         }
 
         function changeLineupSettings() {
-            emitUpdate({ 
+            emitUpdate({
                 current_lineup_team: document.getElementById('lineup_team').value,
-                current_lineup_type: document.getElementById('lineup_type').value 
+                current_lineup_type: document.getElementById('lineup_type').value
             });
         }
     </script>
