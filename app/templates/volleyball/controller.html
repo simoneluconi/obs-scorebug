@@ -52,6 +52,25 @@
             align-items: center;
             justify-content: center;
         }
+        .set-step-btn {
+            width: 26px;
+            height: 26px;
+            min-width: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+            touch-action: manipulation;
+        }
+        .no-spinner::-webkit-inner-spin-button,
+        .no-spinner::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .no-spinner {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
 <body class="p-3 sm:p-6">
@@ -108,9 +127,13 @@
                             <input type="radio" name="server_toggle" onchange="setServer(0)" id="serve_home" class="w-3.5 h-3.5 accent-yellow-400">
                             SERVE
                         </label>
-                        <div class="bg-gray-800 rounded px-1.5 py-0.5 text-center leading-none">
-                            <div class="text-[8px] text-gray-400">SETS</div>
-                            <input type="number" id="home_sets" onchange="updateScore('home')" value="0" class="w-7 text-center bg-transparent text-sm font-bold">
+                        <div class="bg-gray-800 rounded px-1 py-0.5 text-center leading-none">
+                            <div class="text-[8px] text-gray-400 mb-0.5">SETS</div>
+                            <div class="flex items-center gap-0.5">
+                                <button type="button" onclick="adjustSets('home', -1)" class="set-step-btn bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded font-bold">&minus;</button>
+                                <input type="number" id="home_sets" onchange="updateScore('home')" value="0" class="w-5 text-center bg-transparent text-sm font-bold no-spinner">
+                                <button type="button" onclick="adjustSets('home', 1)" class="set-step-btn bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded font-bold">+</button>
+                            </div>
                         </div>
                         <button onclick="callTimeout('home')" id="home_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] sm:text-xs px-2 py-1.5 rounded font-bold whitespace-nowrap">TO <span id="home_timeout_count">0</span>/2</button>
                     </div>
@@ -132,9 +155,13 @@
                             <input type="radio" name="server_toggle" onchange="setServer(1)" id="serve_away" class="w-3.5 h-3.5 accent-yellow-400">
                             SERVE
                         </label>
-                        <div class="bg-gray-800 rounded px-1.5 py-0.5 text-center leading-none">
-                            <div class="text-[8px] text-gray-400">SETS</div>
-                            <input type="number" id="away_sets" onchange="updateScore('away')" value="0" class="w-7 text-center bg-transparent text-sm font-bold">
+                        <div class="bg-gray-800 rounded px-1 py-0.5 text-center leading-none">
+                            <div class="text-[8px] text-gray-400 mb-0.5">SETS</div>
+                            <div class="flex items-center gap-0.5">
+                                <button type="button" onclick="adjustSets('away', -1)" class="set-step-btn bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded font-bold">&minus;</button>
+                                <input type="number" id="away_sets" onchange="updateScore('away')" value="0" class="w-5 text-center bg-transparent text-sm font-bold no-spinner">
+                                <button type="button" onclick="adjustSets('away', 1)" class="set-step-btn bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded font-bold">+</button>
+                            </div>
                         </div>
                         <button onclick="callTimeout('away')" id="away_timeout_btn" class="bg-yellow-700 hover:bg-yellow-600 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] sm:text-xs px-2 py-1.5 rounded font-bold whitespace-nowrap">TO <span id="away_timeout_count">0</span>/2</button>
                     </div>
@@ -185,10 +212,10 @@
             </summary>
             <div class="px-4 pb-4 pt-1 border-t border-gray-700">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                    <button onclick="toggleVisibility('is_visible')" class="bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Toggle Main Scoreboard</button>
-                    <button onclick="toggleVisibility('timeout_visible')" class="bg-yellow-600 hover:bg-yellow-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Toggle TIMEOUT</button>
-                    <button onclick="toggleVisibility('stats_overlay_visible')" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Toggle Stats/Summary</button>
-                    <button onclick="toggleVisibility('replay_visible')" class="bg-pink-600 hover:bg-pink-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Toggle REPLAY bug</button>
+                    <button id="toggle-scoreboard-btn" onclick="toggleVisibility('is_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Main Scoreboard: OFF</button>
+                    <button id="toggle-timeout-btn" onclick="toggleVisibility('timeout_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">TIMEOUT gfx: OFF</button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats_overlay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">Stats/Summary: OFF</button>
+                    <button id="toggle-replay-btn" onclick="toggleVisibility('replay_visible')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded font-bold text-sm sm:text-base">REPLAY bug: OFF</button>
                 </div>
             </div>
         </details>
@@ -316,6 +343,11 @@
             document.getElementById('home_timeout_btn').disabled = (state.home_team.timeouts_used || 0) >= 2;
             document.getElementById('away_timeout_btn').disabled = (state.away_team.timeouts_used || 0) >= 2;
 
+            setToggleButtonState('toggle-scoreboard-btn', state.is_visible, 'bg-blue-600', 'Main Scoreboard');
+            setToggleButtonState('toggle-timeout-btn', state.timeout_visible, 'bg-yellow-600', 'TIMEOUT gfx');
+            setToggleButtonState('toggle-stats-btn', state.stats_overlay_visible, 'bg-purple-600', 'Stats/Summary');
+            setToggleButtonState('toggle-replay-btn', state.replay_visible, 'bg-pink-600', 'REPLAY bug');
+
             const matchOverBanner = document.getElementById('match-over-banner');
             if (state.match_over) {
                 const winnerTeam = state.match_winner === 'home_team' ? state.home_team : state.away_team;
@@ -377,6 +409,14 @@
             emitUpdate(payload);
         }
 
+        function setToggleButtonState(btnId, isOn, onColorClass, label) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.classList.toggle('bg-gray-600', !isOn);
+            btn.classList.toggle(onColorClass, isOn);
+            btn.innerText = `${label}: ${isOn ? 'ON' : 'OFF'}`;
+        }
+
         function setServer(index) { emitUpdate({ serving_team_index: index }); }
 
         function updateTeamInfo(team) {
@@ -400,6 +440,12 @@
         function updateScore(team) {
             let payload = {}; payload[`${team}_team`] = {sets_won: parseInt(document.getElementById(`${team}_sets`).value) || 0};
             emitUpdate(payload);
+        }
+
+        function adjustSets(team, delta) {
+            const input = document.getElementById(`${team}_sets`);
+            input.value = Math.max(0, (parseInt(input.value) || 0) + delta);
+            updateScore(team);
         }
 
         function callTimeout(team) {

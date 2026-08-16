@@ -281,8 +281,8 @@
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <button onclick="updateStats()" class="bg-green-600 hover:bg-green-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Save Stats</button>
-                    <button onclick="toggleVisibility('stats')" class="bg-purple-600 hover:bg-purple-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Toggle H2H Stats</button>
-                    <button onclick="toggleVisibility('lineup')" class="bg-yellow-600 hover:bg-yellow-500 px-4 py-3 rounded-lg font-bold text-black flex-1 min-w-[140px]">Toggle Player Profiles</button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">H2H Stats: OFF</button>
+                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Player Profiles: OFF</button>
                 </div>
             </div>
         </details>
@@ -415,6 +415,26 @@
                 } else {
                     btnPen.classList.replace('bg-pink-600', 'bg-gray-600');
                     btnPen.innerText = 'Show Tracker';
+                }
+
+                const btnStats = document.getElementById('toggle-stats-btn');
+                if (state.visibility.stats) {
+                    btnStats.classList.replace('bg-gray-600', 'bg-purple-600');
+                    btnStats.innerText = 'H2H Stats: ON';
+                } else {
+                    btnStats.classList.replace('bg-purple-600', 'bg-gray-600');
+                    btnStats.innerText = 'H2H Stats: OFF';
+                }
+
+                const btnLineup = document.getElementById('toggle-lineup-btn');
+                if (state.visibility.lineup) {
+                    btnLineup.classList.replace('bg-gray-600', 'bg-yellow-600');
+                    btnLineup.classList.add('text-black');
+                    btnLineup.innerText = 'Player Profiles: ON';
+                } else {
+                    btnLineup.classList.replace('bg-yellow-600', 'bg-gray-600');
+                    btnLineup.classList.remove('text-black');
+                    btnLineup.innerText = 'Player Profiles: OFF';
                 }
             }
 
