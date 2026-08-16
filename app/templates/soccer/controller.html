@@ -153,11 +153,17 @@
                         <option value="HALF TIME">HALF TIME</option>
                         <option value="2nd HALF">2nd HALF</option>
                         <option value="FULL TIME">FULL TIME</option>
+                        <option value="EXTRA TIME BREAK">EXTRA TIME BREAK</option>
+                        <option value="EXTRA TIME 1st">EXTRA TIME 1st</option>
+                        <option value="EXTRA TIME 2nd">EXTRA TIME 2nd</option>
+                        <option value="PENALTIES">PENALTIES</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm mb-1 text-gray-300">Competition / Matchday</label>
-                    <input type="text" id="competition" onchange="updateCompetition()" class="w-full bg-gray-700 p-3 rounded" placeholder="e.g. Serie A - Matchday 12">
+                    <input type="text" id="competition" onchange="updateCompetition()" class="w-full bg-gray-700 p-3 rounded mb-2" placeholder="e.g. Serie A - Matchday 12">
+                    <label class="block text-sm mb-1 text-gray-300">Competition Logo URL</label>
+                    <input type="text" id="competition_logo" onchange="updateCompetitionLogo()" class="w-full bg-gray-700 p-3 rounded" placeholder="https://... (optional)">
                 </div>
             </div>
         </div>
@@ -178,6 +184,7 @@
                         <option value="yellow_card">🟨 Yellow Card</option>
                         <option value="red_card">🟥 Red Card</option>
                         <option value="sub">🔄 Substitution</option>
+                        <option value="var_review">🎥 VAR Review</option>
                     </select>
                     <select id="event-player1" class="bg-gray-700 p-3 rounded col-span-2 sm:col-span-1"><option>Player (In/Scorer)...</option></select>
                     <select id="event-player2" class="bg-gray-700 p-3 rounded col-span-2 sm:col-span-1"><option>Player (Out)...</option></select>
@@ -214,6 +221,17 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </details>
+
+        <details class="bg-gray-800 rounded-lg shadow-lg mb-4 border border-yellow-500">
+            <summary class="p-4 sm:p-6 font-bold text-lg flex items-center justify-between text-yellow-400">
+                <span class="flex items-center gap-2"><span class="material-icons text-base">emoji_events</span>Final Result Banner</span>
+                <span class="material-icons chevron">chevron_right</span>
+            </summary>
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6">
+                <p class="text-sm text-gray-400 mb-3">Shows a prominent final score card on the public overlay. Only use it once the match has ended.</p>
+                <button onclick="toggleFinalBanner()" id="btn-final-banner" class="bg-gray-600 px-4 py-3 rounded font-bold w-full sm:w-auto flex items-center justify-center gap-2" style="min-height:48px;"><span id="btn-final-banner-icon" class="material-icons text-base">visibility</span><span id="btn-final-banner-label">Show Final Result Banner</span></button>
             </div>
         </details>
 
@@ -329,7 +347,7 @@
 
     <script>
         const socket = io("/soccer");
-        let localState = { clock: { minutes: 0, seconds: 0 }, penalties: { active: false } };
+        let localState = { clock: { minutes: 0, seconds: 0 }, penalties: { active: false }, show_final_banner: false };
 
         socket.on('connect', () => {
             document.getElementById('connection-dot').className = 'w-2.5 h-2.5 rounded-full bg-green-500';
@@ -405,6 +423,21 @@
                     btnLineup.classList.add('opacity-60');
                     btnLineupLabel.textContent = 'Lineup Overlay: OFF';
                 }
+
+                const btnFinal = document.getElementById('btn-final-banner');
+                const btnFinalIcon = document.getElementById('btn-final-banner-icon');
+                const btnFinalLabel = document.getElementById('btn-final-banner-label');
+                if (state.show_final_banner) {
+                    btnFinal.classList.replace('bg-gray-600', 'bg-yellow-600');
+                    btnFinal.classList.add('text-black');
+                    btnFinalIcon.textContent = 'visibility_off';
+                    btnFinalLabel.textContent = 'Hide Final Result Banner';
+                } else {
+                    btnFinal.classList.replace('bg-yellow-600', 'bg-gray-600');
+                    btnFinal.classList.remove('text-black');
+                    btnFinalIcon.textContent = 'visibility';
+                    btnFinalLabel.textContent = 'Show Final Result Banner';
+                }
             }
 
             if (isFirstLoad && localState.home_team) {
@@ -424,6 +457,7 @@
                 document.getElementById('a_stat_corners').value = state.away_team.stats.corners;
 
                 document.getElementById('competition').value = state.competition || '';
+                document.getElementById('competition_logo').value = state.competition_logo || '';
             }
         });
 
@@ -453,6 +487,8 @@
         }
         function updatePeriod() { emitUpdate({'clock': {period: document.getElementById('period-select').value}}); }
         function updateCompetition() { emitUpdate({ competition: document.getElementById('competition').value }); }
+        function updateCompetitionLogo() { emitUpdate({ competition_logo: document.getElementById('competition_logo').value }); }
+        function toggleFinalBanner() { emitUpdate({ show_final_banner: !localState.show_final_banner }); }
 
         function statValue(id) {
             const v = document.getElementById(id).value;
@@ -509,7 +545,7 @@
             if(!num || !name) return;
 
             let players = localState[`${team}_team`].players;
-            players.push({ number: num, name: name.toUpperCase(), role: role, status: status });
+            players.push({ number: num, name: name.toUpperCase(), role: role, status: status, yellow_cards: 0 });
             players.sort((a,b) => parseInt(a.number) - parseInt(b.number));
 
             let payload = {}; payload[`${team}_team`] = { players: players };

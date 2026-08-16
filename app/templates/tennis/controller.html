@@ -165,6 +165,17 @@
                     </div>
                 </div>
             </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <button onclick="completeSet()" id="btn-complete-set" class="bg-indigo-600 hover:bg-indigo-500 rounded-lg font-bold py-2 flex items-center justify-center gap-2" title="Archive current games into set history and reset games to 0">
+                    <span class="material-icons text-lg">bookmark_add</span>
+                    <span>Complete Set</span>
+                </button>
+                <button onclick="undoLastAction()" id="btn-undo" class="bg-orange-600 hover:bg-orange-500 rounded-lg font-bold py-2 flex items-center justify-center gap-2" title="Undo last score/state change">
+                    <span class="material-icons text-lg">undo</span>
+                    <span>Undo Last Action</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -198,9 +209,18 @@
                 <input type="text" id="period-select" onkeyup="updatePeriod()" class="w-full bg-gray-700 p-2 rounded mb-4" placeholder="Tournament Info (e.g. FINAL - SINGLES)">
 
                 <label class="block text-sm text-gray-400 mb-1">Match format</label>
-                <select id="match-format-select" onchange="updateMatchFormat()" class="w-full bg-gray-700 p-2 rounded">
+                <select id="match-format-select" onchange="updateMatchFormat()" class="w-full bg-gray-700 p-2 rounded mb-4">
                     <option value="BO3">Best of 3 Sets</option>
                     <option value="BO5">Best of 5 Sets</option>
+                </select>
+
+                <label class="block text-sm text-gray-400 mb-1">Surface (optional, shown next to tournament info)</label>
+                <select id="surface-select" onchange="updateSurface()" class="w-full bg-gray-700 p-2 rounded">
+                    <option value="">— None —</option>
+                    <option value="Hard">Hard</option>
+                    <option value="Clay">Clay</option>
+                    <option value="Grass">Grass</option>
+                    <option value="Carpet">Carpet</option>
                 </select>
             </div>
         </details>
@@ -210,29 +230,45 @@
                 <span>Player Setup (Name, Color, Flag)</span>
                 <span class="material-icons chev">chevron_right</span>
             </summary>
-            <div class="px-4 sm:px-6 pb-6 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div class="sm:border-r sm:border-gray-700 sm:pr-4">
-                    <h3 class="font-bold text-blue-300 mb-2">Player 1</h3>
-                    <input type="text" id="home_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Scoreboard Name (e.g. FEDERER)">
-                    <div class="flex flex-wrap gap-2">
-                        <input type="color" id="home_color" class="h-10 w-16 rounded" value="#1d4ed8">
-                        <input type="text" id="home_logo" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Flag URL">
-                        <button onclick="updateTeamInfo('home')" class="bg-blue-600 hover:bg-blue-500 px-4 rounded font-bold flex items-center gap-1.5">
-                            <span class="material-icons text-lg">save</span>
-                            <span>Save</span>
-                        </button>
+            <div class="px-4 sm:px-6 pb-6 pt-0">
+                <label class="block text-sm text-gray-400 mb-1">Match type</label>
+                <select id="match-type-select" onchange="updateMatchType()" class="w-full bg-gray-700 p-2 rounded mb-4">
+                    <option value="singles">Singles (1 name per team)</option>
+                    <option value="doubles">Doubles (2 names per team, joined with "/")</option>
+                </select>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:border-r sm:border-gray-700 sm:pr-4">
+                        <h3 class="font-bold text-blue-300 mb-2">Player 1</h3>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <input type="text" id="home_rank" class="w-20 bg-gray-700 p-2 rounded" placeholder="Rank (e.g. 3)">
+                            <input type="text" id="home_abbr" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Scoreboard Name (e.g. FEDERER)">
+                        </div>
+                        <input type="text" id="home_player2" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Doubles partner name (only used if match type = Doubles)">
+                        <div class="flex flex-wrap gap-2">
+                            <input type="color" id="home_color" class="h-10 w-16 rounded" value="#1d4ed8">
+                            <input type="text" id="home_logo" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Flag URL">
+                            <button onclick="updateTeamInfo('home')" class="bg-blue-600 hover:bg-blue-500 px-4 rounded font-bold flex items-center gap-1.5">
+                                <span class="material-icons text-lg">save</span>
+                                <span>Save</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <h3 class="font-bold text-red-300 mb-2">Player 2</h3>
-                    <input type="text" id="away_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Scoreboard Name (e.g. NADAL)">
-                    <div class="flex flex-wrap gap-2">
-                        <input type="color" id="away_color" class="h-10 w-16 rounded" value="#b91c1c">
-                        <input type="text" id="away_logo" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Flag URL">
-                        <button onclick="updateTeamInfo('away')" class="bg-red-600 hover:bg-red-500 px-4 rounded font-bold flex items-center gap-1.5">
-                            <span class="material-icons text-lg">save</span>
-                            <span>Save</span>
-                        </button>
+                    <div>
+                        <h3 class="font-bold text-red-300 mb-2">Player 2</h3>
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <input type="text" id="away_rank" class="w-20 bg-gray-700 p-2 rounded" placeholder="Rank (e.g. 5)">
+                            <input type="text" id="away_abbr" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Scoreboard Name (e.g. NADAL)">
+                        </div>
+                        <input type="text" id="away_player2" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Doubles partner name (only used if match type = Doubles)">
+                        <div class="flex flex-wrap gap-2">
+                            <input type="color" id="away_color" class="h-10 w-16 rounded" value="#b91c1c">
+                            <input type="text" id="away_logo" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Flag URL">
+                            <button onclick="updateTeamInfo('away')" class="bg-red-600 hover:bg-red-500 px-4 rounded font-bold flex items-center gap-1.5">
+                                <span class="material-icons text-lg">save</span>
+                                <span>Save</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -269,6 +305,20 @@
                         <span class="material-icons text-lg">visibility_off</span>
                         <span>Hide Event</span>
                     </button>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <span class="block text-xs text-gray-400 mb-2">Persistent score badge (manual, stays on overlay until turned off — unlike the transient event popup above)</span>
+                    <div class="flex flex-wrap gap-3">
+                        <button id="btn-matchpoint" onclick="togglePointBadge('MATCH POINT')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2 opacity-60">
+                            <span class="material-icons text-lg">emoji_events</span>
+                            <span id="btn-matchpoint-label">Match Point: OFF</span>
+                        </button>
+                        <button id="btn-setpoint" onclick="togglePointBadge('SET POINT')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2 opacity-60">
+                            <span class="material-icons text-lg">flag</span>
+                            <span id="btn-setpoint-label">Set Point: OFF</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </details>
@@ -484,15 +534,37 @@
                     btnLineup.classList.add('opacity-60');
                     btnLineup.innerHTML = '<span class="material-icons text-lg">groups</span><span>Player Profiles: OFF</span>';
                 }
+
+                const badge = state.point_badge || { active: false, label: '' };
+                const btnMP = document.getElementById('btn-matchpoint');
+                const btnSP = document.getElementById('btn-setpoint');
+                const mpOn = badge.active && badge.label === 'MATCH POINT';
+                const spOn = badge.active && badge.label === 'SET POINT';
+
+                btnMP.classList.toggle('bg-yellow-600', mpOn);
+                btnMP.classList.toggle('bg-gray-600', !mpOn);
+                btnMP.classList.toggle('opacity-60', !mpOn);
+                document.getElementById('btn-matchpoint-label').textContent = 'Match Point: ' + (mpOn ? 'ON' : 'OFF');
+
+                btnSP.classList.toggle('bg-yellow-600', spOn);
+                btnSP.classList.toggle('bg-gray-600', !spOn);
+                btnSP.classList.toggle('opacity-60', !spOn);
+                document.getElementById('btn-setpoint-label').textContent = 'Set Point: ' + (spOn ? 'ON' : 'OFF');
             }
 
             if (isFirstLoad && localState.home_team) {
                 document.getElementById('home_abbr').value = state.home_team.abbr;
                 document.getElementById('home_logo').value = state.home_team.logo;
+                document.getElementById('home_rank').value = state.home_team.rank || '';
+                document.getElementById('home_player2').value = state.home_team.player2_name || '';
                 document.getElementById('away_abbr').value = state.away_team.abbr;
                 document.getElementById('away_logo').value = state.away_team.logo;
+                document.getElementById('away_rank').value = state.away_team.rank || '';
+                document.getElementById('away_player2').value = state.away_team.player2_name || '';
                 document.getElementById('period-select').value = state.clock.period;
                 document.getElementById('match-format-select').value = state.match_format || 'BO3';
+                document.getElementById('surface-select').value = state.surface || '';
+                document.getElementById('match-type-select').value = state.match_type || 'singles';
                 document.getElementById('lineup_team').value = state.current_lineup_team || 'home';
                 document.getElementById('lineup_type').value = state.current_lineup_type || 'starter';
             }
@@ -523,15 +595,41 @@
         }
         function updatePeriod() { emitUpdate({'clock': {period: document.getElementById('period-select').value}}); }
         function updateMatchFormat() { emitUpdate({ match_format: document.getElementById('match-format-select').value }); }
+        function updateSurface() { emitUpdate({ surface: document.getElementById('surface-select').value }); }
+        function updateMatchType() { emitUpdate({ match_type: document.getElementById('match-type-select').value }); }
 
         function updateTeamInfo(team) {
             let payload = {};
             payload[`${team}_team`] = {
                 abbr: document.getElementById(`${team}_abbr`).value,
                 color: document.getElementById(`${team}_color`).value,
-                logo: document.getElementById(`${team}_logo`).value || ''
+                logo: document.getElementById(`${team}_logo`).value || '',
+                rank: document.getElementById(`${team}_rank`).value || '',
+                player2_name: document.getElementById(`${team}_player2`).value || ''
             };
             emitUpdate(payload);
+        }
+
+        function completeSet() {
+            const h = parseInt(document.getElementById('home_games').value) || 0;
+            const a = parseInt(document.getElementById('away_games').value) || 0;
+            const history = (localState.set_history || []).concat([{ home: h, away: a }]);
+            emitUpdate({
+                set_history: history,
+                home_team: { games: 0 },
+                away_team: { games: 0 }
+            });
+        }
+
+        function undoLastAction() { socket.emit('undo'); }
+
+        function togglePointBadge(label) {
+            const badge = localState.point_badge || { active: false, label: '' };
+            if (badge.active && badge.label === label) {
+                emitUpdate({ point_badge: { active: false } });
+            } else {
+                emitUpdate({ point_badge: { active: true, label: label } });
+            }
         }
 
         function updateScore(team) {

@@ -100,9 +100,22 @@
         }
         .alert-banner.show { opacity: 1; transform: translateX(-50%) translateY(40px); z-index: 20; }
         .alert-timeout { background: #eab308; color: #000; }
-        .alert-point { background: #ef4444; color: #fff; animation: pulse 1s infinite alternate; }
+        /* Background/border color is now set per-team (JS, inline) so the banner visually
+           identifies which side has the set/match point instead of a generic fixed color. */
+        .alert-point { color: #fff; border: 2px solid rgba(255,255,255,0.5); animation: pulse 1s infinite alternate; }
 
-        @keyframes pulse { from { box-shadow: 0 0 5px #ef4444; } to { box-shadow: 0 0 20px #ef4444; } }
+        @keyframes pulse { from { box-shadow: 0 0 5px rgba(255,255,255,0.4); } to { box-shadow: 0 0 20px rgba(255,255,255,0.9); } }
+
+        /* SANCTIONS (yellow/red card counters) - only rendered when a team has at least one */
+        .sanctions-badges { display: flex; gap: 3px; align-items: center; }
+        .sanction-badge {
+            min-width: 16px; height: 20px; padding: 0 4px; border-radius: 3px;
+            font-family: 'Teko', sans-serif; font-size: 15px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .sanction-badge.yellow { background: #eab308; color: #000; }
+        .sanction-badge.red { background: #ef4444; color: #fff; }
 
     </style>
 </head>
@@ -124,7 +137,8 @@
                 <div class="team-color-bar" id="home-color"></div>
                 <img class="team-logo" id="home-logo" src="">
                 <div class="team-abbr" id="home-abbr">HOM</div>
-                
+                <div class="sanctions-badges" id="home-sanctions"></div>
+
                 <div class="sets-won-container" id="home-sets-dots">
                     <div class="set-dot"></div><div class="set-dot"></div><div class="set-dot"></div>
                 </div>
@@ -145,7 +159,8 @@
                 <div class="team-color-bar" id="away-color"></div>
                 <img class="team-logo" id="away-logo" src="">
                 <div class="team-abbr" id="away-abbr">AWY</div>
-                
+                <div class="sanctions-badges" id="away-sanctions"></div>
+
                 <div class="sets-won-container" id="away-sets-dots">
                     <div class="set-dot"></div><div class="set-dot"></div><div class="set-dot"></div>
                 </div>
@@ -205,6 +220,11 @@
             renderTimeoutDots('home', state.home_team.timeouts_used || 0);
             renderTimeoutDots('away', state.away_team.timeouts_used || 0);
 
+            // Sanctions (yellow/red cards) - only rendered when a team has at least one,
+            // so the default 0/0 state renders nothing extra (identical to before this feature).
+            renderSanctions('home', state.home_team.sanctions);
+            renderSanctions('away', state.away_team.sanctions);
+
             // Sets history
             renderPreviousSets(state.previous_sets);
 
@@ -222,12 +242,24 @@
                 timeoutBanner.classList.remove('show');
             }
 
+            // Set/Match point banner: colored and labeled for whichever team actually has
+            // the point, instead of a generic centered text. Data (home/away_set_point,
+            // home/away_match_point) is unchanged - only the rendering below is new.
             const pointBanner = document.getElementById('point-banner');
             pointBanner.classList.remove('show');
-            if(state.home_match_point || state.away_match_point) {
-                pointBanner.innerText = 'MATCH POINT'; pointBanner.classList.add('show');
-            } else if (state.home_set_point || state.away_set_point) {
-                pointBanner.innerText = 'SET POINT'; pointBanner.classList.add('show');
+            let pointTeamKey = null, pointLabel = null;
+            if (state.home_match_point) { pointTeamKey = 'home_team'; pointLabel = 'MATCH POINT'; }
+            else if (state.away_match_point) { pointTeamKey = 'away_team'; pointLabel = 'MATCH POINT'; }
+            else if (state.home_set_point) { pointTeamKey = 'home_team'; pointLabel = 'SET POINT'; }
+            else if (state.away_set_point) { pointTeamKey = 'away_team'; pointLabel = 'SET POINT'; }
+
+            if (pointTeamKey) {
+                const pointTeam = state[pointTeamKey];
+                const teamColor = pointTeam.color || (pointTeamKey === 'home_team' ? '#3b82f6' : '#ef4444');
+                pointBanner.innerText = `${pointTeam.abbr || ''} ${pointLabel}`.trim();
+                pointBanner.style.background = teamColor;
+                pointBanner.style.borderColor = teamColor;
+                pointBanner.classList.add('show');
             }
 
             const matchOverBanner = document.getElementById('match-over-banner');
@@ -250,6 +282,15 @@
             let html = '';
             for(let i=0; i<2; i++) html += `<div class="timeout-dot ${i < used ? 'used' : ''}"></div>`;
             document.getElementById(`${team}-timeout-dots`).innerHTML = html;
+        }
+
+        function renderSanctions(team, sanctions) {
+            const yellow = (sanctions && sanctions.yellow) || 0;
+            const red = (sanctions && sanctions.red) || 0;
+            let html = '';
+            if (yellow > 0) html += `<div class="sanction-badge yellow">${yellow}</div>`;
+            if (red > 0) html += `<div class="sanction-badge red">${red}</div>`;
+            document.getElementById(`${team}-sanctions`).innerHTML = html;
         }
 
         function renderPreviousSets(sets) {

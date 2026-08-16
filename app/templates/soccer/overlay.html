@@ -62,12 +62,36 @@
             background: rgba(10,10,15,0.9); border: 1px solid rgba(255,255,255,0.1);
             border-radius: 6px; font-size: 13px; font-weight: 700;
             text-transform: uppercase; letter-spacing: 2px; color: #ddd;
-            display: none;
+            display: none; align-items: center; gap: 8px;
         }
-        .competition-bar.show { display: block; }
+        .competition-bar.show { display: flex; }
+        .competition-logo { width: 18px; height: 18px; object-fit: contain; display: none; }
+        .competition-logo.show { display: inline-block; }
 
         .team-cards { display: flex; gap: 6px; margin-top: 4px; font-size: 12px; font-weight: 700; justify-content: center; }
         .team-cards span { display: flex; align-items: center; gap: 2px; }
+
+        .team-goals { font-size: 10px; color: #cbd5e1; margin-top: 3px; line-height: 1.3; text-align: center; }
+        .team-goals div { white-space: nowrap; }
+
+        .score-box.leading { color: #facc15; text-shadow: 0 0 10px rgba(250,204,21,0.85); }
+
+        /* FINAL RESULT BANNER - hidden unless explicitly toggled by the operator */
+        .final-banner {
+            position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-15px);
+            display: flex; align-items: center; gap: 22px;
+            background: linear-gradient(180deg, rgba(20,20,25,0.97) 0%, rgba(10,10,15,0.97) 100%);
+            border: 2px solid #eab308; border-radius: 10px; padding: 14px 32px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s;
+            z-index: 50;
+        }
+        .final-banner.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+        .final-banner-title { font-family: 'Teko', sans-serif; font-size: 18px; letter-spacing: 3px; color: #eab308; text-align: center; margin-bottom: 4px; }
+        .final-banner-row { display: flex; align-items: center; gap: 18px; }
+        .final-banner-team { font-size: 20px; font-weight: 700; min-width: 60px; text-align: center; }
+        .final-banner-score { font-family: 'Teko', sans-serif; font-size: 44px; font-weight: 700; letter-spacing: 1px; }
 
         /* PENALTY SHOOTOUT HUD */
         .penalties-container {
@@ -105,13 +129,17 @@
 <body>
 
     <div class="main-hud-wrapper">
-        <div class="competition-bar" id="competition-bar"></div>
+        <div class="competition-bar" id="competition-bar">
+            <img class="competition-logo" id="competition-logo-img" src="">
+            <span id="competition-text"></span>
+        </div>
         <div class="hud-container">
             <div class="team-section home">
                 <div class="team-color-bg" id="home-color">
                     <div>
                         <span class="team-abbr" id="home-abbr">HOM</span>
                         <div class="team-cards" id="home-cards"></div>
+                        <div class="team-goals" id="home-goals"></div>
                     </div>
                 </div>
                 <img class="team-logo" id="home-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
@@ -131,6 +159,7 @@
                     <div>
                         <span class="team-abbr" id="away-abbr">AWY</span>
                         <div class="team-cards" id="away-cards"></div>
+                        <div class="team-goals" id="away-goals"></div>
                     </div>
                 </div>
             </div>
@@ -140,6 +169,17 @@
             <div class="penalty-dots" id="pen-dots-home"></div>
             <div class="pen-text">PENALTIES</div>
             <div class="penalty-dots" id="pen-dots-away"></div>
+        </div>
+    </div>
+
+    <div class="final-banner" id="final-banner">
+        <div>
+            <div class="final-banner-title" id="final-banner-title">FULL TIME</div>
+            <div class="final-banner-row">
+                <span class="final-banner-team" id="final-home-abbr">HOM</span>
+                <span class="final-banner-score" id="final-banner-score">0 - 0</span>
+                <span class="final-banner-team" id="final-away-abbr">AWY</span>
+            </div>
         </div>
     </div>
 
@@ -186,15 +226,53 @@
             else badge.classList.remove('show');
 
             const compBar = document.getElementById('competition-bar');
+            const compText = document.getElementById('competition-text');
+            const compLogo = document.getElementById('competition-logo-img');
             if(state.competition) {
-                compBar.innerText = state.competition;
+                compText.innerText = state.competition;
                 compBar.classList.add('show');
             } else {
+                compText.innerText = '';
                 compBar.classList.remove('show');
+            }
+            if(state.competition_logo) {
+                compLogo.src = state.competition_logo;
+                compLogo.classList.add('show');
+            } else {
+                compLogo.classList.remove('show');
+                compLogo.removeAttribute('src');
             }
 
             renderCards('home', state.home_team.cards);
             renderCards('away', state.away_team.cards);
+            renderGoals('home', state.home_team.goals);
+            renderGoals('away', state.away_team.goals);
+
+            // Leading-team score highlight - purely derived from the scores already shown, so it can never disagree with them
+            const homeScoreEl = document.getElementById('home-score');
+            const awayScoreEl = document.getElementById('away-score');
+            if(state.home_team.score > state.away_team.score) {
+                homeScoreEl.classList.add('leading');
+                awayScoreEl.classList.remove('leading');
+            } else if(state.away_team.score > state.home_team.score) {
+                awayScoreEl.classList.add('leading');
+                homeScoreEl.classList.remove('leading');
+            } else {
+                homeScoreEl.classList.remove('leading');
+                awayScoreEl.classList.remove('leading');
+            }
+
+            // Final result banner - opt-in, off by default
+            const finalBanner = document.getElementById('final-banner');
+            if(state.show_final_banner) {
+                document.getElementById('final-home-abbr').innerText = state.home_team.abbr;
+                document.getElementById('final-away-abbr').innerText = state.away_team.abbr;
+                document.getElementById('final-banner-score').innerText = `${state.home_team.score} - ${state.away_team.score}`;
+                document.getElementById('final-banner-title').innerText = state.clock.period === 'FULL TIME' ? 'FULL TIME' : 'FINAL RESULT';
+                finalBanner.classList.add('show');
+            } else {
+                finalBanner.classList.remove('show');
+            }
 
             updateTimerDOM();
 
@@ -226,6 +304,17 @@
             el.innerHTML = html;
         }
 
+        function renderGoals(team, goals) {
+            const el = document.getElementById(`${team}-goals`);
+            el.innerHTML = '';
+            if(!goals || goals.length === 0) return;
+            goals.forEach(g => {
+                const div = document.createElement('div');
+                div.textContent = `⚽ ${g.player || ''}${g.time ? ' ' + g.time : ''}`;
+                el.appendChild(div);
+            });
+        }
+
         function renderPenaltyDots(team, results) {
             let html = '';
             // Always show at least 5 dots
@@ -249,8 +338,10 @@
 
         function renderEvent(e) {
             const isHome = e.team === 'home';
-            document.getElementById('event-color-bar').style.borderColor = isHome ? state.home_team.color : state.away_team.color;
-            
+            const teamColor = isHome ? state.home_team.color : state.away_team.color;
+            // VAR review gets a neutral, visually distinct color instead of the team color
+            document.getElementById('event-color-bar').style.borderColor = e.type === 'var_review' ? '#f97316' : teamColor;
+
             let icon = ''; let title = '';
             const subOut = document.getElementById('event-sub-out');
             subOut.style.display = 'none';
@@ -259,10 +350,12 @@
                 case 'goal': icon = '⚽'; title = 'GOAL'; break;
                 case 'yellow_card': icon = '🟨'; title = 'YELLOW CARD'; break;
                 case 'red_card': icon = '🟥'; title = 'RED CARD'; break;
-                case 'sub': 
-                    icon = '🔄'; title = 'SUBSTITUTION'; 
+                case 'second_yellow_red': icon = '🟨🟥'; title = 'SECOND YELLOW → RED CARD'; break;
+                case 'var_review': icon = '🎥'; title = 'VAR REVIEW'; break;
+                case 'sub':
+                    icon = '🔄'; title = 'SUBSTITUTION';
                     subOut.style.display = 'block';
-                    subOut.innerText = `▼ Out: ${e.player_2.replace(/^\d+\.\s*/, '')}`; 
+                    subOut.innerText = `▼ Out: ${(e.player_2 || '').replace(/^\d+\.\s*/, '')}`;
                     break;
             }
 
