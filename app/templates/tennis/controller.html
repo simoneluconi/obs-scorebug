@@ -304,12 +304,12 @@
                         <span class="material-icons text-lg">save</span>
                         <span>Save Stats</span>
                     </button>
-                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
-                        <span class="material-icons text-lg">visibility_off</span>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2 opacity-60">
+                        <span class="material-icons text-lg">bar_chart</span>
                         <span>H2H Stats: OFF</span>
                     </button>
-                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
-                        <span class="material-icons text-lg">visibility_off</span>
+                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2 opacity-60">
+                        <span class="material-icons text-lg">groups</span>
                         <span>Player Profiles: OFF</span>
                     </button>
                 </div>
@@ -464,21 +464,25 @@
                 const btnStats = document.getElementById('toggle-stats-btn');
                 if (state.visibility.stats) {
                     btnStats.classList.replace('bg-gray-600', 'bg-purple-600');
-                    btnStats.innerHTML = '<span class="material-icons text-lg">visibility</span><span>H2H Stats: ON</span>';
+                    btnStats.classList.remove('opacity-60');
+                    btnStats.innerHTML = '<span class="material-icons text-lg">bar_chart</span><span>H2H Stats: ON</span>';
                 } else {
                     btnStats.classList.replace('bg-purple-600', 'bg-gray-600');
-                    btnStats.innerHTML = '<span class="material-icons text-lg">visibility_off</span><span>H2H Stats: OFF</span>';
+                    btnStats.classList.add('opacity-60');
+                    btnStats.innerHTML = '<span class="material-icons text-lg">bar_chart</span><span>H2H Stats: OFF</span>';
                 }
 
                 const btnLineup = document.getElementById('toggle-lineup-btn');
                 if (state.visibility.lineup) {
                     btnLineup.classList.replace('bg-gray-600', 'bg-yellow-600');
                     btnLineup.classList.add('text-black');
-                    btnLineup.innerHTML = '<span class="material-icons text-lg">visibility</span><span>Player Profiles: ON</span>';
+                    btnLineup.classList.remove('opacity-60');
+                    btnLineup.innerHTML = '<span class="material-icons text-lg">groups</span><span>Player Profiles: ON</span>';
                 } else {
                     btnLineup.classList.replace('bg-yellow-600', 'bg-gray-600');
                     btnLineup.classList.remove('text-black');
-                    btnLineup.innerHTML = '<span class="material-icons text-lg">visibility_off</span><span>Player Profiles: OFF</span>';
+                    btnLineup.classList.add('opacity-60');
+                    btnLineup.innerHTML = '<span class="material-icons text-lg">groups</span><span>Player Profiles: OFF</span>';
                 }
             }
 
