@@ -191,25 +191,41 @@
                 }
                 document.getElementById('sets-history-container').innerHTML = setsHtml;
 
-                const buildRoster = (players, color) => {
-                    let html = '';
+                const buildRoster = (container, players, color) => {
+                    container.innerHTML = '';
                     if (players && players.length > 0) {
                         players.forEach(p => {
-                            html += `
-                                <div class="player-item">
-                                    <div class="player-num" style="color: ${color}">${p.number}</div>
-                                    <div class="player-name">${p.name}</div>
-                                    <div class="player-role">${p.role || ''}</div>
-                                </div>`;
+                            const item = document.createElement('div');
+                            item.className = 'player-item';
+
+                            const num = document.createElement('div');
+                            num.className = 'player-num';
+                            num.style.color = color;
+                            num.textContent = p.number;
+
+                            const name = document.createElement('div');
+                            name.className = 'player-name';
+                            name.textContent = p.name;
+
+                            const role = document.createElement('div');
+                            role.className = 'player-role';
+                            role.textContent = p.role || '';
+
+                            item.appendChild(num);
+                            item.appendChild(name);
+                            item.appendChild(role);
+                            container.appendChild(item);
                         });
                     } else {
-                        html = '<div style="text-align:center; color:#666; padding: 20px;">No players entered</div>';
+                        const empty = document.createElement('div');
+                        empty.style.cssText = 'text-align:center; color:#666; padding: 20px;';
+                        empty.textContent = 'No players entered';
+                        container.appendChild(empty);
                     }
-                    return html;
                 };
 
-                document.getElementById('home-roster-list').innerHTML = buildRoster(state.home_team.players, state.home_team.color);
-                document.getElementById('away-roster-list').innerHTML = buildRoster(state.away_team.players, state.away_team.color);
+                buildRoster(document.getElementById('home-roster-list'), state.home_team.players, state.home_team.color);
+                buildRoster(document.getElementById('away-roster-list'), state.away_team.players, state.away_team.color);
 
                 box.classList.add('show');
             } else {

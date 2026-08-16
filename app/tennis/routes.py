@@ -1,4 +1,3 @@
-import os
 from flask import render_template
 from app import socketio
 from . import tennis_bp
@@ -30,7 +29,8 @@ game_state = {
     },
     'current_event': { 'type': '', 'team': '', 'player_1': '', 'player_2': '', 'time': '' },
     'current_lineup_team': 'home',
-    'current_lineup_type': 'starter'
+    'current_lineup_type': 'starter',
+    'match_format': 'BO3'
 }
 
 timer_thread = None
@@ -68,8 +68,10 @@ def handle_connect():
 @socketio.on('update_state', namespace='/tennis')
 def handle_update_state(data):
     global game_state
+    if not isinstance(data, dict):
+        return
     for key, value in data.items():
-        if isinstance(value, dict) and key in game_state:
+        if isinstance(value, dict) and isinstance(game_state.get(key), dict):
             game_state[key].update(value)
         else:
             game_state[key] = value
@@ -78,13 +80,18 @@ def handle_update_state(data):
 @socketio.on('clock_action', namespace='/tennis')
 def handle_clock(data):
     global game_state
+    if not isinstance(data, dict):
+        return
     action = data.get('action')
-    
-    if 'hours' in data: game_state['clock']['hours'] = int(data['hours'])
-    if 'minutes' in data: game_state['clock']['minutes'] = int(data['minutes'])
-    if 'seconds' in data: game_state['clock']['seconds'] = int(data['seconds'])
 
-    if action == 'start': 
+    for field in ('hours', 'minutes', 'seconds'):
+        if field in data:
+            try:
+                game_state['clock'][field] = int(data[field])
+            except (TypeError, ValueError):
+                pass
+
+    if action == 'start':
         game_state['clock']['running'] = True
     elif action == 'stop': 
         game_state['clock']['running'] = False
@@ -100,6 +107,8 @@ def handle_clock(data):
 @socketio.on('trigger_event', namespace='/tennis')
 def handle_event(data):
     global game_state
+    if not isinstance(data, dict):
+        return
     game_state['current_event'] = data
     game_state['visibility']['lower_third'] = True
     socketio.emit('state_updated', game_state, namespace='/tennis')

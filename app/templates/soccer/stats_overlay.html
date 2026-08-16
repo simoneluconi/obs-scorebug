@@ -113,6 +113,12 @@
                     <div class="stat-label">FOULS</div>
                     <div class="stat-val" id="a-fouls">0</div>
                 </div>
+
+                <div class="stat-row">
+                    <div class="stat-val" id="h-corners">0</div>
+                    <div class="stat-label">CORNERS</div>
+                    <div class="stat-val" id="a-corners">0</div>
+                </div>
             </div>
         </div>
     </div>
@@ -149,6 +155,8 @@
                 document.getElementById('a-shots').innerText = state.away_team.stats.shots;
                 document.getElementById('h-fouls').innerText = state.home_team.stats.fouls;
                 document.getElementById('a-fouls').innerText = state.away_team.stats.fouls;
+                document.getElementById('h-corners').innerText = state.home_team.stats.corners;
+                document.getElementById('a-corners').innerText = state.away_team.stats.corners;
 
                 box.classList.add('show');
             } else {

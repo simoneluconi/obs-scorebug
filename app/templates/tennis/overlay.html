@@ -24,6 +24,8 @@
             border-bottom: 2px solid rgba(255,255,255,0.05);
         }
         .match-period { font-size: 14px; font-weight: 700; color: #aaa; letter-spacing: 2px; text-transform: uppercase;}
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .match-format { font-size: 11px; font-weight: 700; color: #eab308; letter-spacing: 1px; border: 1px solid rgba(234,179,8,0.5); border-radius: 4px; padding: 1px 6px; }
         .timer { font-size: 16px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
 
         /* PLAYER ROWS */
@@ -89,7 +91,10 @@
 
     <div class="tennis-hud">
         <div class="hud-header">
-            <span class="match-period" id="match-period">FINAL</span>
+            <div class="header-left">
+                <span class="match-period" id="match-period">FINAL</span>
+                <span class="match-format" id="match-format">BO3</span>
+            </div>
             <span class="timer" id="match-timer">00:00:00</span>
         </div>
         
@@ -168,6 +173,7 @@
             document.getElementById('away-logo').src = state.away_team.logo || placeholder_logo;
 
             document.getElementById('match-period').innerText = state.clock.period;
+            document.getElementById('match-format').innerText = state.match_format || 'BO3';
             updateTimerDOM();
 
             const penContainer = document.getElementById('penalties-container');

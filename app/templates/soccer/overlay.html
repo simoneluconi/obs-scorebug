@@ -57,6 +57,18 @@
         }
         .stoppage-badge.show { transform: translateX(-50%) translateY(0); opacity: 1; z-index: 5; }
 
+        .competition-bar {
+            align-self: center; margin-bottom: 6px; padding: 4px 16px;
+            background: rgba(10,10,15,0.9); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px; font-size: 13px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 2px; color: #ddd;
+            display: none;
+        }
+        .competition-bar.show { display: block; }
+
+        .team-cards { display: flex; gap: 6px; margin-top: 4px; font-size: 12px; font-weight: 700; justify-content: center; }
+        .team-cards span { display: flex; align-items: center; gap: 2px; }
+
         /* PENALTY SHOOTOUT HUD */
         .penalties-container {
             display: flex; justify-content: space-between; align-items: center;
@@ -93,13 +105,19 @@
 <body>
 
     <div class="main-hud-wrapper">
+        <div class="competition-bar" id="competition-bar"></div>
         <div class="hud-container">
             <div class="team-section home">
-                <div class="team-color-bg" id="home-color"><span class="team-abbr" id="home-abbr">HOM</span></div>
+                <div class="team-color-bg" id="home-color">
+                    <div>
+                        <span class="team-abbr" id="home-abbr">HOM</span>
+                        <div class="team-cards" id="home-cards"></div>
+                    </div>
+                </div>
                 <img class="team-logo" id="home-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
                 <div class="score-box" id="home-score">0</div>
             </div>
-            
+
             <div class="timer-section">
                 <div class="timer" id="match-timer">00:00</div>
                 <div class="period" id="match-period">1st HALF</div>
@@ -109,7 +127,12 @@
             <div class="team-section away">
                 <div class="score-box" id="away-score">0</div>
                 <img class="team-logo" id="away-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
-                <div class="team-color-bg" id="away-color"><span class="team-abbr" id="away-abbr">AWY</span></div>
+                <div class="team-color-bg" id="away-color">
+                    <div>
+                        <span class="team-abbr" id="away-abbr">AWY</span>
+                        <div class="team-cards" id="away-cards"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -162,6 +185,17 @@
             if(state.clock.show_stoppage && state.clock.stoppage_time > 0) badge.classList.add('show');
             else badge.classList.remove('show');
 
+            const compBar = document.getElementById('competition-bar');
+            if(state.competition) {
+                compBar.innerText = state.competition;
+                compBar.classList.add('show');
+            } else {
+                compBar.classList.remove('show');
+            }
+
+            renderCards('home', state.home_team.cards);
+            renderCards('away', state.away_team.cards);
+
             updateTimerDOM();
 
             // Penalties management
@@ -182,6 +216,15 @@
                 popup.classList.remove('show');
             }
         });
+
+        function renderCards(team, cards) {
+            const el = document.getElementById(`${team}-cards`);
+            if(!cards) { el.innerHTML = ''; return; }
+            let html = '';
+            if(cards.yellow > 0) html += `<span>🟨${cards.yellow}</span>`;
+            if(cards.red > 0) html += `<span>🟥${cards.red}</span>`;
+            el.innerHTML = html;
+        }
 
         function renderPenaltyDots(team, results) {
             let html = '';

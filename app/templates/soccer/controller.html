@@ -57,15 +57,15 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Main Scoreboard</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/soccer/overlay">
+                    <input type="text" id="url-overlay" readonly class="w-full bg-gray-900 p-2 rounded mt-1">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Match Stats Graphic</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/soccer/stats">
+                    <input type="text" id="url-stats" readonly class="w-full bg-gray-900 p-2 rounded mt-1">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-300">Lineup Graphic</label>
-                    <input type="text" readonly class="w-full bg-gray-900 p-2 rounded mt-1" value="http://127.0.0.1:5000/soccer/lineup">
+                    <input type="text" id="url-lineup" readonly class="w-full bg-gray-900 p-2 rounded mt-1">
                 </div>
             </div>
         </div>
@@ -111,6 +111,11 @@
                 <option value="2nd HALF">2nd HALF</option>
                 <option value="FULL TIME">FULL TIME</option>
             </select>
+
+            <div class="mt-4">
+                <label class="block text-sm mb-1">Competition / Matchday</label>
+                <input type="text" id="competition" onchange="updateCompetition()" class="w-full bg-gray-700 p-2 rounded" placeholder="e.g. Serie A - Matchday 12">
+            </div>
         </div>
 
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg col-span-2 grid grid-cols-2 gap-6">
@@ -167,6 +172,26 @@
 
     <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6">
         <h2 class="text-xl font-bold text-white mb-4">Stats & Overlay Management</h2>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <h3 class="font-bold text-blue-300 mb-2">Home Stats</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="h_stat_shots" placeholder="Shots" class="bg-gray-700 p-2 rounded">
+                    <input type="number" id="h_stat_possession" placeholder="Possession %" class="bg-gray-700 p-2 rounded">
+                    <input type="number" id="h_stat_fouls" placeholder="Fouls" class="bg-gray-700 p-2 rounded">
+                    <input type="number" id="h_stat_corners" placeholder="Corners" class="bg-gray-700 p-2 rounded">
+                </div>
+            </div>
+            <div>
+                <h3 class="font-bold text-red-300 mb-2">Away Stats</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="number" id="a_stat_shots" placeholder="Shots" class="bg-gray-700 p-2 rounded">
+                    <input type="number" id="a_stat_possession" placeholder="Possession %" class="bg-gray-700 p-2 rounded">
+                    <input type="number" id="a_stat_fouls" placeholder="Fouls" class="bg-gray-700 p-2 rounded">
+                    <input type="number" id="a_stat_corners" placeholder="Corners" class="bg-gray-700 p-2 rounded">
+                </div>
+            </div>
+        </div>
         <div class="flex gap-4 mb-4">
             <button onclick="updateStats()" class="bg-green-600 px-4 py-2 rounded font-bold">Save Stats</button>
             <button onclick="toggleVisibility('stats')" class="bg-purple-600 px-4 py-2 rounded font-bold">Toggle Stats</button>
@@ -178,8 +203,8 @@
                 <option value="away">Away Team</option>
             </select>
             <select id="lineup_type" onchange="changeLineupSettings()" class="bg-gray-700 p-2 rounded">
-                <option value="titolare">Show Starters</option>
-                <option value="panchina">Show Substitutes</option>
+                <option value="starter">Show Starters</option>
+                <option value="substitute">Show Substitutes</option>
             </select>
         </div>
     </div>
@@ -194,8 +219,8 @@
                     <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
                 </select>
                 <select id="h_p_status" class="bg-gray-700 p-2 rounded">
-                    <option value="titolare">Starter</option>
-                    <option value="panchina">Substitute</option>
+                    <option value="starter">Starter</option>
+                    <option value="substitute">Substitute</option>
                 </select>
                 <button onclick="addPlayer('home')" class="bg-blue-600 px-3 py-2 rounded font-bold hover:bg-blue-500">Add</button>
             </div>
@@ -211,8 +236,8 @@
                     <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
                 </select>
                 <select id="a_p_status" class="bg-gray-700 p-2 rounded">
-                    <option value="titolare">Starter</option>
-                    <option value="panchina">Substitute</option>
+                    <option value="starter">Starter</option>
+                    <option value="substitute">Substitute</option>
                 </select>
                 <button onclick="addPlayer('away')" class="bg-red-600 px-3 py-2 rounded font-bold hover:bg-red-500">Add</button>
             </div>
@@ -245,6 +270,10 @@
     <script>
         const socket = io("/soccer");
         let localState = { clock: { minutes: 0, seconds: 0 }, penalties: { active: false } };
+
+        document.getElementById('url-overlay').value = `${window.location.origin}/soccer/overlay`;
+        document.getElementById('url-stats').value = `${window.location.origin}/soccer/stats`;
+        document.getElementById('url-lineup').value = `${window.location.origin}/soccer/lineup`;
 
         socket.on('clock_tick', (clockData) => {
             if(!localState.clock) localState.clock = {};
@@ -281,6 +310,17 @@
                 document.getElementById('home_logo').value = state.home_team.logo;
                 document.getElementById('away_abbr').value = state.away_team.abbr;
                 document.getElementById('away_logo').value = state.away_team.logo;
+
+                document.getElementById('h_stat_shots').value = state.home_team.stats.shots;
+                document.getElementById('h_stat_possession').value = state.home_team.stats.possession;
+                document.getElementById('h_stat_fouls').value = state.home_team.stats.fouls;
+                document.getElementById('h_stat_corners').value = state.home_team.stats.corners;
+                document.getElementById('a_stat_shots').value = state.away_team.stats.shots;
+                document.getElementById('a_stat_possession').value = state.away_team.stats.possession;
+                document.getElementById('a_stat_fouls').value = state.away_team.stats.fouls;
+                document.getElementById('a_stat_corners').value = state.away_team.stats.corners;
+
+                document.getElementById('competition').value = state.competition || '';
             }
         });
 
@@ -309,6 +349,28 @@
             emitUpdate({'clock': {stoppage_time: val, show_stoppage: show}});
         }
         function updatePeriod() { emitUpdate({'clock': {period: document.getElementById('period-select').value}}); }
+        function updateCompetition() { emitUpdate({ competition: document.getElementById('competition').value }); }
+
+        function statValue(id) {
+            const v = document.getElementById(id).value;
+            return v === '' ? 0 : (Number(v) || 0);
+        }
+        function updateStats() {
+            emitUpdate({
+                home_team: { stats: {
+                    shots: statValue('h_stat_shots'),
+                    possession: statValue('h_stat_possession'),
+                    fouls: statValue('h_stat_fouls'),
+                    corners: statValue('h_stat_corners')
+                }},
+                away_team: { stats: {
+                    shots: statValue('a_stat_shots'),
+                    possession: statValue('a_stat_possession'),
+                    fouls: statValue('a_stat_fouls'),
+                    corners: statValue('a_stat_corners')
+                }}
+            });
+        }
 
         function updateTeamInfo(team) {
             let payload = {};
@@ -367,12 +429,36 @@
             const list = document.getElementById(`${team}-player-list`);
             list.innerHTML = '';
             localState[`${team}_team`].players.forEach((p, idx) => {
-                const badgeClass = p.status === 'titolare' ? 'bg-green-600' : 'bg-yellow-600';
-                const badgeText = p.status === 'titolare' ? 'Starter' : 'Sub';
-                list.innerHTML += `<li class="flex justify-between items-center p-1 border-b border-gray-700">
-                    <span><span class="${badgeClass} text-xs px-1 rounded mr-2">${badgeText}</span><b>${p.number}</b> ${p.name} <span class="text-gray-400 text-xs ml-1">(${p.role})</span></span>
-                    <button onclick="removePlayer('${team}', ${idx})" class="text-red-500 hover:text-red-300">X</button>
-                </li>`;
+                const isStarter = p.status === 'starter';
+
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-1 border-b border-gray-700';
+
+                const info = document.createElement('span');
+
+                const badge = document.createElement('span');
+                badge.className = `${isStarter ? 'bg-green-600' : 'bg-yellow-600'} text-xs px-1 rounded mr-2`;
+                badge.textContent = isStarter ? 'Starter' : 'Sub';
+                info.appendChild(badge);
+
+                const numB = document.createElement('b');
+                numB.textContent = p.number;
+                info.appendChild(numB);
+                info.appendChild(document.createTextNode(` ${p.name} `));
+
+                const roleSpan = document.createElement('span');
+                roleSpan.className = 'text-gray-400 text-xs ml-1';
+                roleSpan.textContent = `(${p.role})`;
+                info.appendChild(roleSpan);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'text-red-500 hover:text-red-300';
+                removeBtn.textContent = 'X';
+                removeBtn.onclick = () => removePlayer(team, idx);
+
+                li.appendChild(info);
+                li.appendChild(removeBtn);
+                list.appendChild(li);
             });
         }
 
@@ -380,12 +466,23 @@
             if(!localState.home_team) return;
             const team = document.getElementById('event-team').value;
             const players = localState[`${team}_team`].players;
-            
-            let html = '<option value="">Select Player...</option>';
-            players.forEach(p => { html += `<option value="${p.number}. ${p.name}">${p.number}. ${p.name}</option>`; });
-            
-            document.getElementById('event-player1').innerHTML = html;
-            document.getElementById('event-player2').innerHTML = html;
+
+            ['event-player1', 'event-player2'].forEach(id => {
+                const select = document.getElementById(id);
+                select.innerHTML = '';
+
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = 'Select Player...';
+                select.appendChild(defaultOpt);
+
+                players.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = `${p.number}. ${p.name}`;
+                    opt.textContent = `${p.number}. ${p.name}`;
+                    select.appendChild(opt);
+                });
+            });
         }
 
         function sendEvent() {

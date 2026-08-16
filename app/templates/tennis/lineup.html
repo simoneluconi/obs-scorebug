@@ -56,12 +56,26 @@
                 const filteredPlayers = team.players.filter(p => p.status === lineupType);
                 
                 filteredPlayers.forEach(p => {
-                    list.innerHTML += `
-                        <div class="player-row">
-                            <div class="p-number" style="color: ${team.color}">${p.number}</div>
-                            <div class="p-name">${p.name}</div>
-                            <div class="p-role">${p.role || ''}</div>
-                        </div>`;
+                    const row = document.createElement('div');
+                    row.className = 'player-row';
+
+                    const num = document.createElement('div');
+                    num.className = 'p-number';
+                    num.style.color = team.color;
+                    num.textContent = p.number;
+
+                    const name = document.createElement('div');
+                    name.className = 'p-name';
+                    name.textContent = p.name;
+
+                    const role = document.createElement('div');
+                    role.className = 'p-role';
+                    role.textContent = p.role || '';
+
+                    row.appendChild(num);
+                    row.appendChild(name);
+                    row.appendChild(role);
+                    list.appendChild(row);
                 });
                 box.classList.add('show');
             } else {
