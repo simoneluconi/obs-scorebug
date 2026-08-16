@@ -124,6 +124,7 @@
                         <h2 class="text-sm font-bold text-blue-400">Player 1</h2>
                         <label class="serve-toggle flex items-center gap-1.5 cursor-pointer bg-gray-900 rounded-lg px-2 border border-gray-700">
                             <input type="radio" name="server_toggle" onchange="setServer('home')" id="serve_home" class="w-4 h-4">
+                            <span class="material-icons text-yellow-400 text-sm">sports_tennis</span>
                             <span class="text-xs font-bold text-yellow-400">SERVE</span>
                         </label>
                     </div>
@@ -146,6 +147,7 @@
                         <h2 class="text-sm font-bold text-red-400">Player 2</h2>
                         <label class="serve-toggle flex items-center gap-1.5 cursor-pointer bg-gray-900 rounded-lg px-2 border border-gray-700">
                             <input type="radio" name="server_toggle" onchange="setServer('away')" id="serve_away" class="w-4 h-4">
+                            <span class="material-icons text-yellow-400 text-sm">sports_tennis</span>
                             <span class="text-xs font-bold text-yellow-400">SERVE</span>
                         </label>
                     </div>
@@ -176,14 +178,20 @@
                 <span class="material-icons chev">chevron_right</span>
             </summary>
             <div class="px-4 sm:px-6 pb-6 pt-0">
-                <button onclick="if(confirm('Reset match clock and all timers? This cannot be undone.')) clockAction('reset')" class="w-full bg-gray-600 hover:bg-gray-500 p-3 rounded-lg font-bold mb-4">RESET TIMERS</button>
+                <button onclick="if(confirm('Reset match clock and all timers? This cannot be undone.')) clockAction('reset')" class="w-full bg-gray-600 hover:bg-gray-500 p-3 rounded-lg font-bold mb-4 flex items-center justify-center gap-2">
+                    <span class="material-icons text-lg">restart_alt</span>
+                    <span>RESET TIMERS</span>
+                </button>
 
                 <label class="block text-sm text-gray-400 mb-1">Manually set clock</label>
                 <div class="flex gap-2 mb-4">
                     <input type="number" id="sync-hour" class="w-1/4 bg-gray-700 p-2 rounded" placeholder="H">
                     <input type="number" id="sync-min" class="w-1/4 bg-gray-700 p-2 rounded" placeholder="M">
                     <input type="number" id="sync-sec" class="w-1/4 bg-gray-700 p-2 rounded" placeholder="S">
-                    <button onclick="syncClock()" class="w-1/4 bg-blue-600 hover:bg-blue-500 p-2 rounded font-bold">Set</button>
+                    <button onclick="syncClock()" class="w-1/4 bg-blue-600 hover:bg-blue-500 p-2 rounded font-bold flex items-center justify-center gap-1">
+                        <span class="material-icons text-base">sync</span>
+                        <span>Set</span>
+                    </button>
                 </div>
 
                 <label class="block text-sm text-gray-400 mb-1">Tournament info / period</label>
@@ -209,7 +217,10 @@
                     <div class="flex flex-wrap gap-2">
                         <input type="color" id="home_color" class="h-10 w-16 rounded" value="#1d4ed8">
                         <input type="text" id="home_logo" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Flag URL">
-                        <button onclick="updateTeamInfo('home')" class="bg-blue-600 hover:bg-blue-500 px-4 rounded font-bold">Save</button>
+                        <button onclick="updateTeamInfo('home')" class="bg-blue-600 hover:bg-blue-500 px-4 rounded font-bold flex items-center gap-1.5">
+                            <span class="material-icons text-lg">save</span>
+                            <span>Save</span>
+                        </button>
                     </div>
                 </div>
                 <div>
@@ -218,7 +229,10 @@
                     <div class="flex flex-wrap gap-2">
                         <input type="color" id="away_color" class="h-10 w-16 rounded" value="#b91c1c">
                         <input type="text" id="away_logo" class="flex-1 min-w-[120px] bg-gray-700 p-2 rounded" placeholder="Flag URL">
-                        <button onclick="updateTeamInfo('away')" class="bg-red-600 hover:bg-red-500 px-4 rounded font-bold">Save</button>
+                        <button onclick="updateTeamInfo('away')" class="bg-red-600 hover:bg-red-500 px-4 rounded font-bold flex items-center gap-1.5">
+                            <span class="material-icons text-lg">save</span>
+                            <span>Save</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -247,8 +261,14 @@
                     <input type="text" id="event-player1" placeholder="Player Name (Optional)" class="bg-gray-700 p-2 rounded">
                 </div>
                 <div class="flex flex-wrap gap-4 mt-4">
-                    <button onclick="sendEvent()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Show Event</button>
-                    <button onclick="hideEvent()" class="bg-gray-600 hover:bg-gray-500 px-6 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Hide Event</button>
+                    <button onclick="sendEvent()" class="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
+                        <span class="material-icons text-lg">visibility</span>
+                        <span>Show Event</span>
+                    </button>
+                    <button onclick="hideEvent()" class="bg-gray-600 hover:bg-gray-500 px-6 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
+                        <span class="material-icons text-lg">visibility_off</span>
+                        <span>Hide Event</span>
+                    </button>
                 </div>
             </div>
         </details>
@@ -280,9 +300,18 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-3">
-                    <button onclick="updateStats()" class="bg-green-600 hover:bg-green-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Save Stats</button>
-                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">H2H Stats: OFF</button>
-                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px]">Player Profiles: OFF</button>
+                    <button onclick="updateStats()" class="bg-green-600 hover:bg-green-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
+                        <span class="material-icons text-lg">save</span>
+                        <span>Save Stats</span>
+                    </button>
+                    <button id="toggle-stats-btn" onclick="toggleVisibility('stats')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
+                        <span class="material-icons text-lg">visibility_off</span>
+                        <span>H2H Stats: OFF</span>
+                    </button>
+                    <button id="toggle-lineup-btn" onclick="toggleVisibility('lineup')" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold flex-1 min-w-[140px] flex items-center justify-center gap-2">
+                        <span class="material-icons text-lg">visibility_off</span>
+                        <span>Player Profiles: OFF</span>
+                    </button>
                 </div>
             </div>
         </details>
@@ -314,7 +343,10 @@
                                 <option value="starter">On Court</option>
                                 <option value="bench">Bench</option>
                             </select>
-                            <button onclick="addPlayer('home')" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded font-bold">Add</button>
+                            <button onclick="addPlayer('home')" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded font-bold flex items-center gap-1.5">
+                                <span class="material-icons text-lg">person_add</span>
+                                <span>Add</span>
+                            </button>
                         </div>
                         <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[80px]"></ul>
                     </div>
@@ -328,7 +360,10 @@
                                 <option value="starter">On Court</option>
                                 <option value="bench">Bench</option>
                             </select>
-                            <button onclick="addPlayer('away')" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded font-bold">Add</button>
+                            <button onclick="addPlayer('away')" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded font-bold flex items-center gap-1.5">
+                                <span class="material-icons text-lg">person_add</span>
+                                <span>Add</span>
+                            </button>
                         </div>
                         <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[80px]"></ul>
                     </div>
@@ -342,20 +377,29 @@
                 <span class="material-icons chev">chevron_right</span>
             </summary>
             <div class="px-4 sm:px-6 pb-6 pt-0">
-                <button onclick="togglePenalties()" id="btn-penalties" class="w-full bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold mb-4">Show Point Tracker</button>
+                <button onclick="togglePenalties()" id="btn-penalties" class="w-full bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg font-bold mb-4 flex items-center justify-center gap-2">
+                    <span class="material-icons text-lg">visibility_off</span>
+                    <span>Show Point Tracker</span>
+                </button>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="bg-gray-700 p-4 rounded text-center">
                         <div class="flex flex-wrap justify-center gap-2">
                             <button onclick="addPenalty('home', true)" class="bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-bold">🟢 Point Won</button>
                             <button onclick="addPenalty('home', false)" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded font-bold">🔴 Point Lost</button>
-                            <button onclick="removePenalty('home')" class="bg-gray-500 hover:bg-gray-400 px-3 py-2 rounded font-bold">Undo</button>
+                            <button onclick="removePenalty('home')" class="bg-gray-500 hover:bg-gray-400 px-3 py-2 rounded font-bold flex items-center gap-1.5">
+                                <span class="material-icons text-lg">undo</span>
+                                <span>Undo</span>
+                            </button>
                         </div>
                     </div>
                     <div class="bg-gray-700 p-4 rounded text-center">
                         <div class="flex flex-wrap justify-center gap-2">
                             <button onclick="addPenalty('away', true)" class="bg-green-600 hover:bg-green-500 px-3 py-2 rounded font-bold">🟢 Point Won</button>
                             <button onclick="addPenalty('away', false)" class="bg-red-600 hover:bg-red-500 px-3 py-2 rounded font-bold">🔴 Point Lost</button>
-                            <button onclick="removePenalty('away')" class="bg-gray-500 hover:bg-gray-400 px-3 py-2 rounded font-bold">Undo</button>
+                            <button onclick="removePenalty('away')" class="bg-gray-500 hover:bg-gray-400 px-3 py-2 rounded font-bold flex items-center gap-1.5">
+                                <span class="material-icons text-lg">undo</span>
+                                <span>Undo</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -411,30 +455,30 @@
                 const btnPen = document.getElementById('btn-penalties');
                 if(state.penalties.active) {
                     btnPen.classList.replace('bg-gray-600', 'bg-pink-600');
-                    btnPen.innerText = 'Hide Tracker';
+                    btnPen.innerHTML = '<span class="material-icons text-lg">visibility</span><span>Hide Tracker</span>';
                 } else {
                     btnPen.classList.replace('bg-pink-600', 'bg-gray-600');
-                    btnPen.innerText = 'Show Tracker';
+                    btnPen.innerHTML = '<span class="material-icons text-lg">visibility_off</span><span>Show Tracker</span>';
                 }
 
                 const btnStats = document.getElementById('toggle-stats-btn');
                 if (state.visibility.stats) {
                     btnStats.classList.replace('bg-gray-600', 'bg-purple-600');
-                    btnStats.innerText = 'H2H Stats: ON';
+                    btnStats.innerHTML = '<span class="material-icons text-lg">visibility</span><span>H2H Stats: ON</span>';
                 } else {
                     btnStats.classList.replace('bg-purple-600', 'bg-gray-600');
-                    btnStats.innerText = 'H2H Stats: OFF';
+                    btnStats.innerHTML = '<span class="material-icons text-lg">visibility_off</span><span>H2H Stats: OFF</span>';
                 }
 
                 const btnLineup = document.getElementById('toggle-lineup-btn');
                 if (state.visibility.lineup) {
                     btnLineup.classList.replace('bg-gray-600', 'bg-yellow-600');
                     btnLineup.classList.add('text-black');
-                    btnLineup.innerText = 'Player Profiles: ON';
+                    btnLineup.innerHTML = '<span class="material-icons text-lg">visibility</span><span>Player Profiles: ON</span>';
                 } else {
                     btnLineup.classList.replace('bg-yellow-600', 'bg-gray-600');
                     btnLineup.classList.remove('text-black');
-                    btnLineup.innerText = 'Player Profiles: OFF';
+                    btnLineup.innerHTML = '<span class="material-icons text-lg">visibility_off</span><span>Player Profiles: OFF</span>';
                 }
             }
 
@@ -600,8 +644,9 @@
                 li.appendChild(info);
 
                 const btn = document.createElement('button');
-                btn.className = 'text-red-500 hover:text-red-300';
-                btn.textContent = 'X';
+                btn.className = 'text-red-500 hover:text-red-300 flex items-center justify-center';
+                btn.innerHTML = '<span class="material-icons text-lg">person_remove</span>';
+                btn.title = 'Remove player';
                 btn.onclick = () => removePlayer(team, idx);
                 li.appendChild(btn);
 
