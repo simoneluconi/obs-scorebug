@@ -178,10 +178,32 @@
             <span id="match-over-text"></span>
         </div>
 
+        <!-- Operator-only reminder: never shown in the public overlay, so it can never
+             introduce wrong data there. Shown when the decisive set reaches 8 points. -->
+        <div id="side-change-banner" class="hidden bg-yellow-400 text-black font-bold text-center p-3 rounded-lg mb-4 text-xs sm:text-sm flex items-center justify-between gap-3">
+            <span class="flex items-center gap-2"><span class="material-icons" style="font-size:1.2em">swap_horiz</span>Decisive set at 8 points — remember to swap sides of the court!</span>
+            <button onclick="dismissSideChangeBanner()" class="bg-black/20 hover:bg-black/30 rounded px-3 py-1 font-bold shrink-0">Dismiss</button>
+        </div>
+
         <div class="bg-gray-800 rounded-lg shadow-lg p-4 mb-4 flex flex-wrap items-center justify-center gap-4">
             <button onclick="socket.emit('next_set')" class="bg-green-600 hover:bg-green-500 px-5 py-3 rounded-lg font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">skip_next</span>Start Next Set</button>
+            <button onclick="swapSides()" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-3 rounded-lg font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">swap_horiz</span>Swap Sides</button>
             <button onclick="resetMatch()" class="bg-red-700 hover:bg-red-600 px-5 py-3 rounded-lg font-bold text-sm sm:text-base flex items-center justify-center gap-2"><span class="material-icons" style="font-size:1.1em">restart_alt</span>Reset Match</button>
         </div>
+
+        <details class="group bg-gray-800 rounded-lg shadow-lg mb-4">
+            <summary class="flex items-center justify-between gap-2 cursor-pointer select-none px-4 py-3 font-bold text-gray-200 text-base sm:text-lg">
+                <span>Match Format</span>
+                <span class="material-icons transition-transform duration-200 group-open:rotate-180">expand_more</span>
+            </summary>
+            <div class="px-4 pb-4 pt-1 border-t border-gray-700">
+                <label class="block text-xs text-gray-400 mb-1">Best set to win the match &mdash; ideally set this before the match starts. Defaults to Best of 5 (unchanged behavior) if never touched.</label>
+                <select id="match-format-select" onchange="setMatchFormat()" class="w-full bg-gray-700 p-2 rounded">
+                    <option value="bo5">Best of 5 (win 3 sets, 5th set decisive to 15)</option>
+                    <option value="bo3">Best of 3 (win 2 sets, 3rd set decisive to 15)</option>
+                </select>
+            </div>
+        </details>
 
         <details class="group bg-gray-800 rounded-lg shadow-lg mb-4">
             <summary class="flex items-center justify-between gap-2 cursor-pointer select-none px-4 py-3 font-bold text-yellow-400 text-base sm:text-lg">
@@ -292,11 +314,35 @@
             </div>
         </details>
 
+        <details class="group bg-gray-800 rounded-lg shadow-lg mb-4">
+            <summary class="flex items-center justify-between gap-2 cursor-pointer select-none px-4 py-3 font-bold text-gray-200 text-base sm:text-lg">
+                <span>Sanctions / Cards</span>
+                <span class="material-icons transition-transform duration-200 group-open:rotate-180">expand_more</span>
+            </summary>
+            <div class="px-4 pb-4 pt-1 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                <div>
+                    <h3 class="text-base font-bold text-blue-400 mb-2">Home</h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="addSanction('home','yellow')" class="flex-1 bg-yellow-500 text-black hover:bg-yellow-400 px-3 py-2 rounded font-bold">🟨 Yellow <span id="home_yellow_count">0</span></button>
+                        <button onclick="addSanction('home','red')" class="flex-1 bg-red-600 hover:bg-red-500 px-3 py-2 rounded font-bold">🟥 Red <span id="home_red_count">0</span></button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-red-400 mb-2">Away</h3>
+                    <div class="flex items-center gap-2">
+                        <button onclick="addSanction('away','yellow')" class="flex-1 bg-yellow-500 text-black hover:bg-yellow-400 px-3 py-2 rounded font-bold">🟨 Yellow <span id="away_yellow_count">0</span></button>
+                        <button onclick="addSanction('away','red')" class="flex-1 bg-red-600 hover:bg-red-500 px-3 py-2 rounded font-bold">🟥 Red <span id="away_red_count">0</span></button>
+                    </div>
+                </div>
+            </div>
+        </details>
+
     </div>
 
     <script>
         const socket = io("/volleyball");
         let localState = { clock: { hours: 0, minutes: 0, seconds: 0 } };
+        let sideChangeDismissedForSet = null;
 
         socket.on('connect', () => {
             document.getElementById('connection-dot').className = 'w-2 h-2 rounded-full bg-green-400';
@@ -342,6 +388,31 @@
             document.getElementById('away_timeout_count').innerText = state.away_team.timeouts_used || 0;
             document.getElementById('home_timeout_btn').disabled = (state.home_team.timeouts_used || 0) >= 2;
             document.getElementById('away_timeout_btn').disabled = (state.away_team.timeouts_used || 0) >= 2;
+
+            const homeSanctions = state.home_team.sanctions || {};
+            const awaySanctions = state.away_team.sanctions || {};
+            document.getElementById('home_yellow_count').innerText = homeSanctions.yellow || 0;
+            document.getElementById('home_red_count').innerText = homeSanctions.red || 0;
+            document.getElementById('away_yellow_count').innerText = awaySanctions.yellow || 0;
+            document.getElementById('away_red_count').innerText = awaySanctions.red || 0;
+
+            const matchFormatSelect = document.getElementById('match-format-select');
+            if (document.activeElement !== matchFormatSelect) {
+                matchFormatSelect.value = state.match_format || 'bo5';
+            }
+
+            // Operator-only decisive-set / side-change reminder. Never touches the
+            // public overlay - purely local UI state driven off data already in `state`.
+            const decisiveSet = state.match_format === 'bo3' ? 3 : 5;
+            const isDecisiveSet = state.current_set_number === decisiveSet;
+            const atSideChangeScore = state.home_team.score === 8 || state.away_team.score === 8;
+            const sideChangeBanner = document.getElementById('side-change-banner');
+            if (isDecisiveSet && atSideChangeScore && sideChangeDismissedForSet !== state.current_set_number) {
+                sideChangeBanner.classList.remove('hidden');
+            } else {
+                sideChangeBanner.classList.add('hidden');
+                if (!(isDecisiveSet && atSideChangeScore)) sideChangeDismissedForSet = null;
+            }
 
             setToggleButtonState('toggle-scoreboard-btn', state.is_visible, 'bg-blue-600', 'Main Scoreboard');
             setToggleButtonState('toggle-timeout-btn', state.timeout_visible, 'bg-yellow-600', 'TIMEOUT gfx');
@@ -463,6 +534,29 @@
             if (confirm('Reset the entire match? This clears scores, sets and timeouts for both teams.')) {
                 socket.emit('reset_match');
             }
+        }
+
+        function setMatchFormat() {
+            emitUpdate({ match_format: document.getElementById('match-format-select').value });
+        }
+
+        function swapSides() {
+            if (confirm('Swap Home and Away? This exchanges names, colors, logos, scores, sets, timeouts and rosters between the two sides.')) {
+                socket.emit('swap_sides');
+            }
+        }
+
+        function dismissSideChangeBanner() {
+            sideChangeDismissedForSet = localState.current_set_number;
+            document.getElementById('side-change-banner').classList.add('hidden');
+        }
+
+        function addSanction(team, type) {
+            const sanctions = (localState[`${team}_team`] && localState[`${team}_team`].sanctions) || { yellow: 0, red: 0 };
+            const current = sanctions[type] || 0;
+            let payload = {};
+            payload[`${team}_team`] = { sanctions: { [type]: current + 1 } };
+            emitUpdate(payload);
         }
 
         function addPlayer(team) {

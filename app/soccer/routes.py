@@ -1,9 +1,15 @@
 import logging
+import threading
 from flask import render_template
 from app import socketio
 from . import soccer_bp
 
 logger = logging.getLogger(__name__)
+
+# Serializes every mutation of game_state so concurrent Socket.IO events
+# (e.g. two operators clicking at once, or a burst of rapid clicks) can't
+# interleave their read-modify-write steps and corrupt shared state.
+state_lock = threading.Lock()
 
 game_state = {
     'home_team': {
@@ -11,14 +17,16 @@ game_state = {
         'score': 0, 'color': '#1d4ed8',
         'stats': {'shots': 0, 'possession': 50, 'fouls': 0, 'corners': 0},
         'cards': {'yellow': 0, 'red': 0},
-        'players': []
+        'players': [],
+        'goals': []  # List of {player, time} - populated only when a scorer is selected
     },
     'away_team': {
         'name': 'AWAY TEAM', 'abbr': 'AWY', 'logo': '',
         'score': 0, 'color': '#b91c1c',
         'stats': {'shots': 0, 'possession': 50, 'fouls': 0, 'corners': 0},
         'cards': {'yellow': 0, 'red': 0},
-        'players': []
+        'players': [],
+        'goals': []
     },
     'clock': {
         'minutes': 0, 'seconds': 0, 'running': False,
@@ -33,6 +41,8 @@ game_state = {
         'scoreboard': True, 'lower_third': False, 'stats': False, 'lineup': False
     },
     'competition': '',
+    'competition_logo': '',
+    'show_final_banner': False,
     'current_event': { 'type': '', 'team': '', 'player_1': '', 'player_2': '', 'time': '' },
     'current_lineup_team': 'home',
     'current_lineup_type': 'starter' # Can be 'starter' or 'substitute'
@@ -47,13 +57,14 @@ def background_timer():
     while True:
         try:
             socketio.sleep(1) # Wait exactly 1 second
-            if game_state['clock']['running']:
-                game_state['clock']['seconds'] += 1
-                if game_state['clock']['seconds'] >= 60:
-                    game_state['clock']['seconds'] = 0
-                    game_state['clock']['minutes'] += 1
-                # Send the updated time to all screens
-                socketio.emit('clock_tick', game_state['clock'], namespace='/soccer')
+            with state_lock:
+                if game_state['clock']['running']:
+                    game_state['clock']['seconds'] += 1
+                    if game_state['clock']['seconds'] >= 60:
+                        game_state['clock']['seconds'] = 0
+                        game_state['clock']['minutes'] += 1
+                    # Send the updated time to all screens
+                    socketio.emit('clock_tick', game_state['clock'], namespace='/soccer')
         except Exception:
             # Never let the loop die - a crash here would freeze the clock forever
             logger.exception('background_timer iteration failed')
@@ -102,8 +113,9 @@ def handle_update_state(data):
         logger.warning('Ignoring malformed update_state payload: %r', data)
         return
     try:
-        _safe_merge(game_state, data)
-        socketio.emit('state_updated', game_state, namespace='/soccer')
+        with state_lock:
+            _safe_merge(game_state, data)
+            socketio.emit('state_updated', game_state, namespace='/soccer')
     except Exception:
         logger.exception('Error handling update_state')
 
@@ -114,34 +126,35 @@ def handle_clock(data):
         logger.warning('Ignoring malformed clock_action payload: %r', data)
         return
     try:
-        action = data.get('action')
+        with state_lock:
+            action = data.get('action')
 
-        # If we receive minutes and seconds from Sync, make sure they are integers
-        if 'minutes' in data:
-            try:
-                game_state['clock']['minutes'] = int(data['minutes'])
-            except (TypeError, ValueError):
-                logger.warning('Ignoring invalid clock minutes: %r', data.get('minutes'))
-        if 'seconds' in data:
-            try:
-                game_state['clock']['seconds'] = int(data['seconds'])
-            except (TypeError, ValueError):
-                logger.warning('Ignoring invalid clock seconds: %r', data.get('seconds'))
+            # If we receive minutes and seconds from Sync, make sure they are integers
+            if 'minutes' in data:
+                try:
+                    game_state['clock']['minutes'] = int(data['minutes'])
+                except (TypeError, ValueError):
+                    logger.warning('Ignoring invalid clock minutes: %r', data.get('minutes'))
+            if 'seconds' in data:
+                try:
+                    game_state['clock']['seconds'] = int(data['seconds'])
+                except (TypeError, ValueError):
+                    logger.warning('Ignoring invalid clock seconds: %r', data.get('seconds'))
 
-        if action == 'start':
-            game_state['clock']['running'] = True
-        elif action == 'stop':
-            game_state['clock']['running'] = False
-        elif action == 'reset':
-            game_state['clock']['running'] = False
-            game_state['clock']['minutes'] = 0
-            game_state['clock']['seconds'] = 0
-            game_state['clock']['stoppage_time'] = 0
-            game_state['clock']['show_stoppage'] = False
+            if action == 'start':
+                game_state['clock']['running'] = True
+            elif action == 'stop':
+                game_state['clock']['running'] = False
+            elif action == 'reset':
+                game_state['clock']['running'] = False
+                game_state['clock']['minutes'] = 0
+                game_state['clock']['seconds'] = 0
+                game_state['clock']['stoppage_time'] = 0
+                game_state['clock']['show_stoppage'] = False
 
-        socketio.emit('state_updated', game_state, namespace='/soccer')
-        # Update the displays visually immediately (especially useful for reset)
-        socketio.emit('clock_tick', game_state['clock'], namespace='/soccer')
+            socketio.emit('state_updated', game_state, namespace='/soccer')
+            # Update the displays visually immediately (especially useful for reset)
+            socketio.emit('clock_tick', game_state['clock'], namespace='/soccer')
     except Exception:
         logger.exception('Error handling clock_action')
 
@@ -152,17 +165,64 @@ def handle_event(data):
         logger.warning('Ignoring malformed trigger_event payload: %r', data)
         return
     try:
-        game_state['current_event'] = data
-        game_state['visibility']['lower_third'] = True
+        with state_lock:
+            team = data.get('team')
+            event_type = data.get('type')
+            player_1 = data.get('player_1') or ''
 
-        # Cards are tallied automatically so the scoreboard counter stays accurate
-        team = data.get('team')
-        event_type = data.get('type')
-        if team in ('home', 'away') and event_type in ('yellow_card', 'red_card'):
-            card_key = 'yellow' if event_type == 'yellow_card' else 'red'
-            game_state[f'{team}_team']['cards'][card_key] += 1
+            # If a second yellow auto-generates a red card, we display a dedicated
+            # banner for it instead of the plain yellow-card one that was triggered.
+            second_yellow_player = None
 
-        socketio.emit('state_updated', game_state, namespace='/soccer')
+            # Cards are tallied automatically so the scoreboard counter stays accurate
+            if team in ('home', 'away') and event_type in ('yellow_card', 'red_card'):
+                card_key = 'yellow' if event_type == 'yellow_card' else 'red'
+                game_state[f'{team}_team']['cards'][card_key] += 1
+
+                # Per-player yellow tracking is fully opt-in: it only runs when the
+                # operator actually picked a player from the dropdown. If player_1
+                # is empty (today's behavior for an operator who skips it), we
+                # cannot know whose card it is, so we do nothing else here - the
+                # team counter above is the only thing that changes, exactly like
+                # before this feature existed.
+                if event_type == 'yellow_card' and player_1:
+                    try:
+                        players = game_state[f'{team}_team'].get('players', [])
+                        for p in players:
+                            if isinstance(p, dict) and f"{p.get('number')}. {p.get('name')}" == player_1:
+                                p['yellow_cards'] = p.get('yellow_cards', 0) + 1
+                                if p['yellow_cards'] >= 2:
+                                    game_state[f'{team}_team']['cards']['red'] += 1
+                                    second_yellow_player = player_1
+                                break
+                    except Exception:
+                        logger.exception('Error tracking per-player yellow cards')
+
+            # Scorer list is opt-in too: only appended when a player is selected.
+            # The score itself is untouched here - it is still driven independently
+            # by the existing +/- buttons, so this list can never desync the score.
+            if team in ('home', 'away') and event_type == 'goal' and player_1:
+                try:
+                    game_state[f'{team}_team'].setdefault('goals', []).append({
+                        'player': player_1, 'time': data.get('time', '')
+                    })
+                except Exception:
+                    logger.exception('Error appending goal scorer')
+
+            if second_yellow_player:
+                game_state['current_event'] = {
+                    'type': 'second_yellow_red',
+                    'team': team,
+                    'player_1': second_yellow_player,
+                    'player_2': '',
+                    'time': data.get('time', '')
+                }
+            else:
+                game_state['current_event'] = data
+
+            game_state['visibility']['lower_third'] = True
+
+            socketio.emit('state_updated', game_state, namespace='/soccer')
     except Exception:
         logger.exception('Error handling trigger_event')
 
@@ -170,7 +230,8 @@ def handle_event(data):
 def hide_event():
     global game_state
     try:
-        game_state['visibility']['lower_third'] = False
-        socketio.emit('state_updated', game_state, namespace='/soccer')
+        with state_lock:
+            game_state['visibility']['lower_third'] = False
+            socketio.emit('state_updated', game_state, namespace='/soccer')
     except Exception:
         logger.exception('Error handling hide_event')

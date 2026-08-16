@@ -28,6 +28,31 @@
         .match-format { font-size: 11px; font-weight: 700; color: #eab308; letter-spacing: 1px; border: 1px solid rgba(234,179,8,0.5); border-radius: 4px; padding: 1px 6px; }
         .timer { font-size: 16px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
 
+        /* SURFACE BADGE - hidden unless surface is set */
+        .surface-badge { font-size: 11px; font-weight: 700; color: #93c5fd; letter-spacing: 1px; border: 1px solid rgba(147,197,253,0.5); border-radius: 4px; padding: 1px 6px; text-transform: uppercase; display: none; }
+        .surface-badge.show { display: inline-block; }
+
+        /* RANK BADGE - hidden unless rank is set */
+        .rank-badge { font-size: 18px; font-weight: 700; color: #eab308; margin-right: 6px; display: none; }
+        .rank-badge.show { display: inline; }
+
+        /* SET HISTORY ROW - hidden unless there are completed sets */
+        .set-history {
+            display: none; padding: 4px 20px 8px 20px; font-size: 13px; font-weight: 700;
+            color: #aaa; letter-spacing: 1px; background: rgba(0,0,0,0.3);
+        }
+        .set-history.show { display: block; }
+
+        /* PERSISTENT MATCH/SET POINT BADGE - hidden unless manually toggled on */
+        .point-badge {
+            position: absolute; top: -14px; right: 16px;
+            background: #eab308; color: #111; font-family: 'Teko', sans-serif;
+            font-size: 20px; font-weight: 700; letter-spacing: 1px;
+            padding: 3px 14px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: none;
+        }
+        .point-badge.show { display: block; }
+
         /* PLAYER ROWS */
         .player-row {
             display: flex; align-items: stretch; border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -90,18 +115,21 @@
 <body>
 
     <div class="tennis-hud">
+        <div class="point-badge" id="point-badge">MATCH POINT</div>
         <div class="hud-header">
             <div class="header-left">
                 <span class="match-period" id="match-period">FINAL</span>
                 <span class="match-format" id="match-format">BO3</span>
+                <span class="surface-badge" id="surface-badge"></span>
             </div>
             <span class="timer" id="match-timer">00:00:00</span>
         </div>
-        
+
         <div class="player-row home">
             <div class="color-bar" id="home-color" style="background: #1d4ed8;"></div>
             <div class="player-info">
                 <img class="flag" id="home-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
+                <span class="rank-badge" id="home-rank"></span>
                 <div class="name" id="home-abbr">P1</div>
             </div>
             <div class="serve-indicator" id="home-serve"><div class="serve-dot"></div></div>
@@ -114,6 +142,7 @@
             <div class="color-bar" id="away-color" style="background: #b91c1c;"></div>
             <div class="player-info">
                 <img class="flag" id="away-logo" src="{{ url_for('static', filename='img/placeholder.svg') }}">
+                <span class="rank-badge" id="away-rank"></span>
                 <div class="name" id="away-abbr">P2</div>
             </div>
             <div class="serve-indicator" id="away-serve"><div class="serve-dot"></div></div>
@@ -121,6 +150,8 @@
             <div class="score-col games" id="away-games">0</div>
             <div class="score-col points" id="away-score">0</div>
         </div>
+
+        <div class="set-history" id="set-history"></div>
     </div>
 
     <div class="penalties-container" id="penalties-container" style="position: absolute; bottom: 20px; left: 80px; width: 470px;">
@@ -153,10 +184,44 @@
 
         socket.on('state_updated', (newData) => {
             state = newData;
-            
-            document.getElementById('home-abbr').innerText = state.home_team.abbr;
-            document.getElementById('away-abbr').innerText = state.away_team.abbr;
-            
+
+            document.getElementById('home-abbr').innerText = formatTeamName(state.home_team);
+            document.getElementById('away-abbr').innerText = formatTeamName(state.away_team);
+
+            const homeRankEl = document.getElementById('home-rank');
+            const homeRank = state.home_team.rank || '';
+            homeRankEl.textContent = homeRank ? `[${homeRank}]` : '';
+            homeRankEl.classList.toggle('show', !!homeRank);
+
+            const awayRankEl = document.getElementById('away-rank');
+            const awayRank = state.away_team.rank || '';
+            awayRankEl.textContent = awayRank ? `[${awayRank}]` : '';
+            awayRankEl.classList.toggle('show', !!awayRank);
+
+            const surfaceEl = document.getElementById('surface-badge');
+            const surface = state.surface || '';
+            surfaceEl.textContent = surface;
+            surfaceEl.classList.toggle('show', !!surface);
+
+            const historyEl = document.getElementById('set-history');
+            const history = Array.isArray(state.set_history) ? state.set_history : [];
+            if (history.length > 0) {
+                historyEl.textContent = 'SETS: ' + history.map(s => `${s.home}-${s.away}`).join(', ');
+                historyEl.classList.add('show');
+            } else {
+                historyEl.textContent = '';
+                historyEl.classList.remove('show');
+            }
+
+            const badge = state.point_badge || { active: false, label: '' };
+            const badgeEl = document.getElementById('point-badge');
+            if (badge.active && badge.label) {
+                badgeEl.textContent = badge.label;
+                badgeEl.classList.add('show');
+            } else {
+                badgeEl.classList.remove('show');
+            }
+
             document.getElementById('home-sets').innerText = state.home_team.sets;
             document.getElementById('home-games').innerText = state.home_team.games;
             document.getElementById('home-score').innerText = state.home_team.score;
@@ -193,6 +258,14 @@
                 popup.classList.remove('show');
             }
         });
+
+        function formatTeamName(team) {
+            const base = team.abbr;
+            if (state.match_type === 'doubles' && team.player2_name) {
+                return base + ' / ' + String(team.player2_name).toUpperCase();
+            }
+            return base;
+        }
 
         function renderPenaltyDots(team, results) {
             let html = '';
