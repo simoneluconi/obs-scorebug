@@ -104,6 +104,13 @@
 
         socket.on('settings_updated', applySettings);
         socket.on('play_transition', playTransition);
+
+        // OBS itself can fire these directly on the browser source (e.g. via
+        // Advanced Scene Switcher or an OBS script bound to the scene transition),
+        // so the overlay reacts to them the same way it reacts to the manual
+        // Socket.IO trigger from the control panel.
+        window.addEventListener('transitionStart', playTransition);
+        window.addEventListener('transitionStop', function() {});
     </script>
 </body>
 </html>
