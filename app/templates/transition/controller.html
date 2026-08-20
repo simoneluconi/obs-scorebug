@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Transition Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body { background-color: #111827; color: #f3f4f6; }
+        .info-modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .info-modal-content {
+            background-color: #1f2937;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 2rem;
+            border: 1px solid #374151;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 12px;
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .info-button {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="p-3 sm:p-6">
+
+    <div id="infoModal" class="info-modal">
+        <div class="info-modal-content">
+            <span class="close-button" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
+            <h2 class="text-2xl font-bold mb-4 text-blue-300">OBS Browser Source URLs</h2>
+            <p class="text-gray-400 mb-6">Copy and paste this address as "Browser Source" in OBS.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-300">Stinger Transition</label>
+                    <input type="text" readonly id="url-transition-overlay" class="w-full bg-gray-900 p-2 rounded mt-1" value="">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-2xl mx-auto space-y-6">
+
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <span class="material-icons">switch_video</span> Transition
+            </h1>
+            <div class="flex items-center gap-2">
+                <button onclick="document.getElementById('infoModal').style.display='block'" class="info-button bg-blue-600 text-white rounded-full hover:bg-blue-500 transition-colors shrink-0">
+                    <span class="material-icons">info</span>
+                </button>
+                <a href="/" class="text-gray-400 hover:text-white flex items-center gap-1">
+                    <span class="material-icons">home</span> Home
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-4">
+            <h2 class="font-bold text-lg">Colors</h2>
+            <div class="flex items-center gap-4">
+                <label class="flex-1">
+                    <span class="block text-sm text-gray-400 mb-1">Panel color 1</span>
+                    <input type="color" id="panel_color_1" class="h-10 w-full rounded cursor-pointer">
+                </label>
+                <label class="flex-1">
+                    <span class="block text-sm text-gray-400 mb-1">Panel color 2</span>
+                    <input type="color" id="panel_color_2" class="h-10 w-full rounded cursor-pointer">
+                </label>
+            </div>
+            <button onclick="saveColors()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5 w-full">
+                <span class="material-icons" style="font-size:1.1em">save</span> Save colors
+            </button>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-4">
+            <h2 class="font-bold text-lg">Logo</h2>
+            <div class="flex items-center gap-4">
+                <div class="w-24 h-24 bg-gray-900 rounded flex items-center justify-center overflow-hidden border border-gray-700">
+                    <img id="logo-preview" class="max-w-full max-h-full hidden" alt="Logo preview">
+                    <span id="logo-placeholder" class="material-icons text-gray-600 text-3xl">image</span>
+                </div>
+                <div class="flex-1 space-y-2">
+                    <input type="file" id="logo-input" accept="image/*" class="block w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:bg-gray-700 file:text-gray-100 hover:file:bg-gray-600">
+                    <button onclick="uploadLogo()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5 w-full">
+                        <span class="material-icons" style="font-size:1.1em">upload</span> Upload logo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="playTransition()" class="bg-green-600 hover:bg-green-500 px-6 py-4 rounded-xl font-bold text-xl flex items-center justify-center gap-2 w-full">
+            <span class="material-icons">play_circle</span> Trigger Transition
+        </button>
+    </div>
+
+    <script>
+        const socket = io('/transition');
+
+        (function initObsUrls() {
+            const origin = window.location.origin;
+            document.getElementById('url-transition-overlay').value = `${origin}/transition/overlay`;
+        })();
+
+        socket.on('settings_updated', (settings) => {
+            document.getElementById('panel_color_1').value = settings.panel_color_1;
+            document.getElementById('panel_color_2').value = settings.panel_color_2;
+
+            const preview = document.getElementById('logo-preview');
+            const placeholder = document.getElementById('logo-placeholder');
+            if (settings.logo_filename) {
+                preview.src = `/transition/uploads/${settings.logo_filename}`;
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                preview.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        });
+
+        function saveColors() {
+            socket.emit('update_settings', {
+                panel_color_1: document.getElementById('panel_color_1').value,
+                panel_color_2: document.getElementById('panel_color_2').value,
+            });
+        }
+
+        function uploadLogo() {
+            const input = document.getElementById('logo-input');
+            if (!input.files.length) return;
+            const formData = new FormData();
+            formData.append('logo', input.files[0]);
+            fetch('/transition/upload_logo', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(() => { input.value = ''; })
+                .catch(() => alert('Upload failed'));
+        }
+
+        function playTransition() {
+            socket.emit('play_transition');
+        }
+    </script>
+</body>
+</html>

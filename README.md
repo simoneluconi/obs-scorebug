@@ -115,6 +115,18 @@ python run.py
 
 ---
 
+### 🎬 Stinger Transition
+
+- 🎛️ Control Panel  
+  `/transition`
+
+- 🖥️ OBS Overlay  
+  `/transition/overlay` → Two-panel stinger with your logo and colors
+
+Set the panel colors and upload a team logo from the control panel, then press **Trigger Transition** to fire it live. Colors and logo persist across restarts (stored in the local, git-ignored `instance/` folder), so a team logo is never pushed to the repository.
+
+---
+
 ## 🧩 Project Structure
 
 ```
@@ -125,7 +137,8 @@ app/
  ├── templates/
  ├── soccer/
  ├── tennis/
- └── volleyball/
+ ├── volleyball/
+ └── transition/
 ```
 
 Each sport is a standalone module → easy to expand.
