@@ -17,11 +17,13 @@ def create_app():
         from .tennis.routes import tennis_bp
         from .volleyball.routes import volleyball_bp
         from .transition.routes import transition_bp
+        from .teams.routes import teams_bp
 
         app.register_blueprint(routes.main_bp)
         app.register_blueprint(soccer_bp, url_prefix='/soccer')
         app.register_blueprint(tennis_bp, url_prefix='/tennis')
         app.register_blueprint(volleyball_bp, url_prefix='/volleyball')
         app.register_blueprint(transition_bp, url_prefix='/transition')
+        app.register_blueprint(teams_bp, url_prefix='/teams')
 
     return app

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Team Library</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body { background-color: #111827; color: #f3f4f6; }
+    </style>
+</head>
+<body class="p-3 sm:p-6">
+    <div class="max-w-3xl mx-auto space-y-6">
+
+        <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <span class="material-icons">groups</span> Team Library
+            </h1>
+            <a href="/" class="text-gray-400 hover:text-white flex items-center gap-1">
+                <span class="material-icons">home</span> Home
+            </a>
+        </div>
+        <p class="text-sm text-gray-400 -mt-4">Prepare teams in advance, then load them instantly from any sport's control panel &mdash; no restart needed.</p>
+
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">Sport</label>
+            <select id="sport-select" onchange="selectSport(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 font-bold">
+                <option value="soccer">Soccer</option>
+                <option value="tennis">Tennis</option>
+                <option value="volleyball">Volleyball</option>
+            </select>
+        </div>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-4">
+            <h2 class="font-bold text-lg" id="form-title">New team</h2>
+
+            <div class="flex items-center gap-4">
+                <div class="w-20 h-20 bg-gray-900 rounded flex items-center justify-center overflow-hidden border border-gray-700 shrink-0">
+                    <img id="logo-preview" class="max-w-full max-h-full hidden" alt="Logo preview">
+                    <span id="logo-placeholder" class="material-icons text-gray-600 text-3xl">image</span>
+                </div>
+                <div class="flex-1 space-y-2">
+                    <input type="text" id="f-label" class="w-full bg-gray-700 p-2 rounded" placeholder="Team name (e.g. Juventus)">
+                    <div class="flex gap-2">
+                        <input type="text" id="f-abbr" class="flex-1 bg-gray-700 p-2 rounded" placeholder="Abbreviation (e.g. JUV)">
+                        <input type="color" id="f-color" value="#3b82f6" class="h-10 w-16 rounded shrink-0">
+                    </div>
+                </div>
+            </div>
+
+            <div id="tennis-only-fields" class="hidden grid grid-cols-2 gap-2">
+                <input type="text" id="f-rank" class="bg-gray-700 p-2 rounded" placeholder="Rank/seed (optional)">
+                <input type="text" id="f-player2" class="bg-gray-700 p-2 rounded" placeholder="Doubles partner (optional)">
+            </div>
+
+            <div class="flex gap-2 items-center">
+                <input type="text" id="f-logo-url" class="flex-1 bg-gray-700 p-2 rounded text-sm" placeholder="Logo URL (optional)">
+                <span class="text-gray-500 text-sm">or</span>
+                <input type="file" id="f-logo-file" accept="image/*" class="text-sm text-gray-300 file:mr-2 file:py-2 file:px-3 file:rounded file:border-0 file:bg-gray-700 file:text-gray-100 hover:file:bg-gray-600 max-w-[220px]">
+            </div>
+
+            <div>
+                <h3 class="text-sm font-bold text-gray-400 mb-2">Roster</h3>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    <input type="number" id="p-number" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
+                    <input type="text" id="p-name" placeholder="Name" class="flex-1 min-w-[100px] bg-gray-700 p-2 rounded">
+                    <input type="text" id="p-role" placeholder="Role" class="w-32 bg-gray-700 p-2 rounded">
+                    <select id="p-status" class="hidden bg-gray-700 p-2 rounded">
+                        <option value="starter">Starter</option>
+                        <option value="substitute">Substitute</option>
+                    </select>
+                    <button onclick="addDraftPlayer()" class="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded font-bold flex items-center gap-1"><span class="material-icons" style="font-size:1.1em">person_add</span>Add</button>
+                </div>
+                <ul id="draft-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[48px]"></ul>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="submitForm()" id="submit-btn" class="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5">
+                    <span class="material-icons" style="font-size:1.1em">save</span> Create team
+                </button>
+                <button onclick="resetForm()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-bold">Cancel</button>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="font-bold text-lg mb-2">Saved teams</h2>
+            <div id="preset-list" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSport = 'soccer';
+        let presets = [];
+        let draftPlayers = [];
+        let editingId = null;
+        let logoOverride = null; // set to '' explicitly when the operator clears the logo URL
+
+        function selectSport(sport) {
+            currentSport = sport;
+            document.getElementById('sport-select').value = sport;
+            document.getElementById('tennis-only-fields').classList.toggle('hidden', sport !== 'tennis');
+            document.getElementById('p-status').classList.toggle('hidden', sport === 'volleyball');
+            resetForm();
+            loadPresets();
+        }
+
+        function addDraftPlayer() {
+            const number = document.getElementById('p-number').value;
+            const name = document.getElementById('p-name').value.trim();
+            const role = document.getElementById('p-role').value.trim();
+            if (!name) return;
+            const player = { number: number, name: name.toUpperCase(), role: role };
+            if (currentSport !== 'volleyball') player.status = document.getElementById('p-status').value;
+            draftPlayers.push(player);
+            document.getElementById('p-number').value = '';
+            document.getElementById('p-name').value = '';
+            document.getElementById('p-role').value = '';
+            renderDraftPlayers();
+        }
+
+        function removeDraftPlayer(index) {
+            draftPlayers.splice(index, 1);
+            renderDraftPlayers();
+        }
+
+        function renderDraftPlayers() {
+            const list = document.getElementById('draft-player-list');
+            list.innerHTML = draftPlayers.map((p, i) => `
+                <li class="flex items-center justify-between bg-gray-800 px-2 py-1 rounded">
+                    <span>#${p.number || '-'} ${p.name} ${p.role ? '(' + p.role + ')' : ''} ${p.status ? '- ' + p.status : ''}</span>
+                    <button onclick="removeDraftPlayer(${i})" class="text-red-400 hover:text-red-300"><span class="material-icons" style="font-size:1.1em">close</span></button>
+                </li>`).join('') || '<li class="text-gray-500">No players added yet.</li>';
+        }
+
+        function resetForm() {
+            editingId = null;
+            logoOverride = null;
+            draftPlayers = [];
+            document.getElementById('form-title').innerText = 'New team';
+            document.getElementById('submit-btn').innerHTML = '<span class="material-icons" style="font-size:1.1em">save</span> Create team';
+            document.getElementById('f-label').value = '';
+            document.getElementById('f-abbr').value = '';
+            document.getElementById('f-color').value = '#3b82f6';
+            document.getElementById('f-rank').value = '';
+            document.getElementById('f-player2').value = '';
+            document.getElementById('f-logo-url').value = '';
+            document.getElementById('f-logo-file').value = '';
+            setLogoPreview('');
+            renderDraftPlayers();
+        }
+
+        function setLogoPreview(url) {
+            const preview = document.getElementById('logo-preview');
+            const placeholder = document.getElementById('logo-placeholder');
+            if (url) {
+                preview.src = url;
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                preview.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('f-logo-url').addEventListener('input', (e) => setLogoPreview(e.target.value));
+
+        function loadPresets() {
+            fetch(`/teams/api/list?sport=${currentSport}`)
+                .then(r => r.json())
+                .then(list => { presets = list; renderPresetList(); })
+                .catch(() => { presets = []; renderPresetList(); });
+        }
+
+        function renderPresetList() {
+            const container = document.getElementById('preset-list');
+            if (!presets.length) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">No saved teams for this sport yet.</p>';
+                return;
+            }
+            container.innerHTML = presets.map(p => `
+                <div class="bg-gray-800 border border-gray-700 rounded-lg p-3 flex items-center gap-3">
+                    <div class="w-12 h-12 bg-gray-900 rounded flex items-center justify-center overflow-hidden border border-gray-700 shrink-0">
+                        ${p.data.logo ? `<img src="${p.data.logo}" class="max-w-full max-h-full">` : '<span class="material-icons text-gray-600">image</span>'}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold truncate">${p.label}</div>
+                        <div class="text-xs text-gray-400">${p.data.abbr || ''} &middot; ${(p.data.players || []).length} players</div>
+                    </div>
+                    <span class="w-5 h-5 rounded shrink-0" style="background-color:${p.data.color || '#666'}"></span>
+                    <button onclick="editPreset('${p.id}')" class="bg-gray-700 hover:bg-gray-600 p-2 rounded flex items-center justify-center shrink-0"><span class="material-icons" style="font-size:1.1em">edit</span></button>
+                    <button onclick="deletePreset('${p.id}')" class="bg-gray-700 hover:bg-red-600 p-2 rounded flex items-center justify-center shrink-0"><span class="material-icons" style="font-size:1.1em">delete</span></button>
+                </div>`).join('');
+        }
+
+        function editPreset(id) {
+            const preset = presets.find(p => p.id === id);
+            if (!preset) return;
+            editingId = id;
+            const d = preset.data;
+            document.getElementById('form-title').innerText = `Edit "${preset.label}"`;
+            document.getElementById('submit-btn').innerHTML = '<span class="material-icons" style="font-size:1.1em">save</span> Save changes';
+            document.getElementById('f-label').value = preset.label;
+            document.getElementById('f-abbr').value = d.abbr || '';
+            document.getElementById('f-color').value = d.color || '#3b82f6';
+            document.getElementById('f-rank').value = d.rank || '';
+            document.getElementById('f-player2').value = d.player2_name || '';
+            document.getElementById('f-logo-url').value = (d.logo || '').startsWith('/teams/uploads/') ? '' : (d.logo || '');
+            document.getElementById('f-logo-file').value = '';
+            logoOverride = d.logo || '';
+            setLogoPreview(d.logo || '');
+            draftPlayers = JSON.parse(JSON.stringify(d.players || []));
+            renderDraftPlayers();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deletePreset(id) {
+            const preset = presets.find(p => p.id === id);
+            if (!preset || !confirm(`Delete saved team "${preset.label}"?`)) return;
+            fetch(`/teams/api/presets/${id}`, { method: 'DELETE' }).then(() => {
+                if (editingId === id) resetForm();
+                loadPresets();
+            });
+        }
+
+        function submitForm() {
+            const label = document.getElementById('f-label').value.trim();
+            if (!label) { alert('Please enter a team name.'); return; }
+
+            const data = {
+                abbr: document.getElementById('f-abbr').value,
+                color: document.getElementById('f-color').value,
+                players: draftPlayers,
+            };
+            const logoUrlField = document.getElementById('f-logo-url').value.trim();
+            data.logo = logoUrlField || (editingId ? logoOverride : '') || '';
+            if (currentSport === 'volleyball') data.name = label;
+            if (currentSport === 'tennis') {
+                data.rank = document.getElementById('f-rank').value;
+                data.player2_name = document.getElementById('f-player2').value;
+            }
+
+            const body = JSON.stringify({ sport: currentSport, label, data });
+            const request = editingId
+                ? fetch(`/teams/api/presets/${editingId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body })
+                : fetch('/teams/api/presets', { method: 'POST', headers: {'Content-Type': 'application/json'}, body });
+
+            request.then(r => r.json()).then(preset => {
+                const file = document.getElementById('f-logo-file').files[0];
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('logo', file);
+                    return fetch(`/teams/api/presets/${preset.id}/logo`, { method: 'POST', body: formData });
+                }
+            }).then(() => {
+                resetForm();
+                loadPresets();
+            }).catch(() => alert('Something went wrong saving this team.'));
+        }
+
+        selectSport('soccer');
+    </script>
+</body>
+</html>
