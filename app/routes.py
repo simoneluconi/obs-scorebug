@@ -7,7 +7,10 @@ def index():
     sports = [
         {'name': 'Soccer', 'url': 'soccer', 'icon': 'sports_soccer'},
         {'name': 'Tennis', 'url': 'tennis', 'icon': 'sports_tennis'},
-        {'name': 'Volleyball', 'url': 'volleyball', 'icon': 'sports_volleyball'},
-        {'name': 'Transition', 'url': 'transition', 'icon': 'switch_video'}
+        {'name': 'Volleyball', 'url': 'volleyball', 'icon': 'sports_volleyball'}
     ]
-    return render_template('index.html', sports=sports)
+    tools = [
+        {'name': 'Transition', 'url': 'transition', 'icon': 'switch_video'},
+        {'name': 'Team Library', 'url': 'teams', 'icon': 'groups'}
+    ]
+    return render_template('index.html', sports=sports, tools=tools)

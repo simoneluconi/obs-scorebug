@@ -250,6 +250,11 @@
             <div class="px-4 pb-4 pt-1 border-t border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <h3 class="text-lg font-bold text-blue-400 mb-2 mt-3">Home Team</h3>
+                    <div class="flex gap-2 mb-2">
+                        <select id="home_preset_select" class="flex-1 bg-gray-700 p-2 rounded text-sm"><option value="">Load saved team&hellip;</option></select>
+                        <button onclick="applyTeamPreset('home')" title="Load" class="bg-gray-600 hover:bg-gray-500 p-2 rounded flex items-center justify-center shrink-0"><span class="material-icons" style="font-size:1.1em">download</span></button>
+                        <button onclick="saveTeamPreset('home')" title="Save as new team" class="bg-gray-600 hover:bg-gray-500 p-2 rounded flex items-center justify-center shrink-0"><span class="material-icons" style="font-size:1.1em">bookmark_add</span></button>
+                    </div>
                     <input type="text" id="home_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbr. (e.g. ITA)">
                     <input type="text" id="home_name" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Full Name">
                     <div class="flex gap-2">
@@ -260,6 +265,11 @@
                 </div>
                 <div>
                     <h3 class="text-lg font-bold text-red-400 mb-2 mt-3">Away Team</h3>
+                    <div class="flex gap-2 mb-2">
+                        <select id="away_preset_select" class="flex-1 bg-gray-700 p-2 rounded text-sm"><option value="">Load saved team&hellip;</option></select>
+                        <button onclick="applyTeamPreset('away')" title="Load" class="bg-gray-600 hover:bg-gray-500 p-2 rounded flex items-center justify-center shrink-0"><span class="material-icons" style="font-size:1.1em">download</span></button>
+                        <button onclick="saveTeamPreset('away')" title="Save as new team" class="bg-gray-600 hover:bg-gray-500 p-2 rounded flex items-center justify-center shrink-0"><span class="material-icons" style="font-size:1.1em">bookmark_add</span></button>
+                    </div>
                     <input type="text" id="away_abbr" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Abbr. (e.g. BRA)">
                     <input type="text" id="away_name" class="w-full bg-gray-700 p-2 rounded mb-2" placeholder="Full Name">
                     <div class="flex gap-2">
@@ -283,7 +293,7 @@
                         <div class="flex flex-wrap gap-2 mb-3">
                             <input type="number" id="h_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
                             <input type="text" id="h_p_name" placeholder="Name" class="flex-1 min-w-[100px] bg-gray-700 p-2 rounded">
-                            <input type="text" id="h_p_role" placeholder="Role" class="w-24 bg-gray-700 p-2 rounded">
+                            <input type="text" id="h_p_role" placeholder="Role" class="w-28 bg-gray-700 p-2 rounded">
                             <button onclick="addPlayer('home')" class="bg-blue-600 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">person_add</span>Add</button>
                         </div>
                         <ul id="home-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
@@ -293,7 +303,7 @@
                         <div class="flex flex-wrap gap-2 mb-3">
                             <input type="number" id="a_p_num" placeholder="No." class="w-16 bg-gray-700 p-2 rounded">
                             <input type="text" id="a_p_name" placeholder="Name" class="flex-1 min-w-[100px] bg-gray-700 p-2 rounded">
-                            <input type="text" id="a_p_role" placeholder="Role" class="w-24 bg-gray-700 p-2 rounded">
+                            <input type="text" id="a_p_role" placeholder="Role" class="w-28 bg-gray-700 p-2 rounded">
                             <button onclick="addPlayer('away')" class="bg-red-600 px-4 py-2 rounded font-bold flex items-center justify-center gap-1.5"><span class="material-icons" style="font-size:1.1em">person_add</span>Add</button>
                         </div>
                         <ul id="away-player-list" class="space-y-1 text-sm bg-gray-900 p-2 rounded min-h-[100px]"></ul>
@@ -341,8 +351,62 @@
 
     <script>
         const socket = io("/volleyball");
+        const SPORT = 'volleyball';
         let localState = { clock: { hours: 0, minutes: 0, seconds: 0 } };
         let sideChangeDismissedForSet = null;
+        let teamPresets = [];
+
+        function loadTeamPresetsList() {
+            fetch(`/teams/api/list?sport=${SPORT}`)
+                .then(r => r.json())
+                .then(list => {
+                    teamPresets = list;
+                    ['home', 'away'].forEach(side => {
+                        const sel = document.getElementById(`${side}_preset_select`);
+                        if (!sel) return;
+                        sel.innerHTML = '<option value="">Load saved team&hellip;</option>' +
+                            list.map(p => `<option value="${p.id}">${p.label}</option>`).join('');
+                    });
+                })
+                .catch(() => {});
+        }
+
+        function applyTeamPreset(team) {
+            const sel = document.getElementById(`${team}_preset_select`);
+            const preset = teamPresets.find(p => p.id === sel.value);
+            if (!preset) return;
+            const d = preset.data;
+            if ('name' in d && document.getElementById(`${team}_name`)) document.getElementById(`${team}_name`).value = d.name;
+            if ('abbr' in d) document.getElementById(`${team}_abbr`).value = d.abbr;
+            if ('color' in d) document.getElementById(`${team}_color`).value = d.color;
+            if ('logo' in d) document.getElementById(`${team}_logo`).value = d.logo || '';
+            if ('rank' in d && document.getElementById(`${team}_rank`)) document.getElementById(`${team}_rank`).value = d.rank;
+            if ('player2_name' in d && document.getElementById(`${team}_player2`)) document.getElementById(`${team}_player2`).value = d.player2_name;
+            emitUpdate({ [`${team}_team`]: d });
+        }
+
+        function saveTeamPreset(team) {
+            const defaultLabel = document.getElementById(`${team}_name`) ? document.getElementById(`${team}_name`).value : document.getElementById(`${team}_abbr`).value;
+            const label = prompt('Save this team as:', defaultLabel || '');
+            if (!label) return;
+
+            const data = {
+                abbr: document.getElementById(`${team}_abbr`).value,
+                color: document.getElementById(`${team}_color`).value,
+                logo: document.getElementById(`${team}_logo`).value || '',
+                players: (localState[`${team}_team`] || {}).players || [],
+            };
+            if (document.getElementById(`${team}_name`)) data.name = document.getElementById(`${team}_name`).value;
+            if (document.getElementById(`${team}_rank`)) data.rank = document.getElementById(`${team}_rank`).value;
+            if (document.getElementById(`${team}_player2`)) data.player2_name = document.getElementById(`${team}_player2`).value;
+
+            fetch('/teams/api/presets', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sport: SPORT, label, data })
+            }).then(r => r.json()).then(() => loadTeamPresetsList());
+        }
+
+        loadTeamPresetsList();
 
         socket.on('connect', () => {
             document.getElementById('connection-dot').className = 'w-2 h-2 rounded-full bg-green-400';
